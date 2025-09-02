@@ -6,6 +6,7 @@
 .pnp.js
 src/components/spare.js
 
+.env
 
 # testing
 /coverage
