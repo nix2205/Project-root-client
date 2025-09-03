@@ -221,7 +221,6 @@ const LogTable = ({
             <th className="border px-3 py-3">T.A</th>
             <th className="border px-3 py-3">D.A</th>
             <th className="border px-3 py-3">TOTAL</th>
-            {/* ❌ REMOVED Select column */}
           </tr>
         </thead>
         <tbody>
@@ -287,7 +286,7 @@ const LogTable = ({
                             onClick={() => toggleLocationDesc(log._id)}
                             className={`ml-2 px-2 py-1 text-xs rounded-md ${
                               log.locationDesc
-                                ? "bg-green-500 text-white hover:bg-orange-600" // ✅ Changed to orange
+                                ? "bg-green-500 text-white hover:bg-green-600" // ✅ Changed to orange
                                 : "bg-blue-100 text-blue-600 hover:bg-blue-200"
                             }`}
                           >
