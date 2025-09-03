@@ -6,7 +6,7 @@ This repo contains the **frontend (React)** of the project.
 
 🔗 **Backend Repo:** [Project-root-server](https://github.com/nix2205/Project-root-server)  
 🌐 **Live App:** [Pharma Tracker](https://project-root-client.vercel.app/)  
-🎥 **Demo Video:** [Watch Here](#)  
+🎥 **Demo Video:** [Watch Here](https://youtu.be/llMPQUKH5GU)  
 
 ---
 
