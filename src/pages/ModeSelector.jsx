@@ -1,5 +1,3 @@
-
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout"; // Import your Layout component
@@ -8,12 +6,12 @@ const ModeSelector = () => {
   const navigate = useNavigate();
 
   return (
-    <Layout title="Attendance Punching & Monthly Expenses" backTo="/">
+    <Layout title="Attendance & Monthly Expenses" backTo="/">
       {/* Main Container */}
-      <div className="flex justify-center items-center min-h-[calc(100vh-100px)] p-6">
-        <div className="bg-white/50 p-8 rounded-xl shadow-lg flex flex-col items-center w-[650px]">
+      <div className="flex justify-center items-center min-h-[calc(100vh-100px)] p-4">
+        <div className="bg-white/50 p-6 sm:p-8 rounded-xl shadow-lg flex flex-col items-center w-full max-w-3xl">
           {/* Two-column layout */}
-          <div className="flex justify-between w-full gap-12">
+          <div className="flex flex-col md:flex-row justify-between w-full gap-6 md:gap-12">
             {/* Left Side: Main Actions */}
             <div className="flex flex-col gap-4 flex-1 items-center">
               <button
@@ -64,11 +62,11 @@ const ModeSelector = () => {
   );
 };
 
-// ✅ Tailwind classes for buttons
+// ✅ Tailwind classes for buttons (responsive width)
 const primaryButtonClass =
-  "bg-[#2C3E65] text-white px-5 py-3 rounded-md text-lg font-semibold hover:bg-[#00a6c2] transition w-[200px]";
+  "bg-[#2C3E65] text-white px-5 py-3 rounded-md text-lg font-semibold hover:bg-[#00a6c2] transition w-full sm:w-[200px]";
 
 const secondaryButtonClass =
-  "bg-gray-100 text-[#2C3E65] border border-[#2C3E65] px-5 py-3 rounded-md text-lg font-semibold hover:bg-[#e0e0e0] transition w-[220px]";
+  "bg-gray-100 text-[#2C3E65] border border-[#2C3E65] px-5 py-3 rounded-md text-lg font-semibold hover:bg-[#e0e0e0] transition w-full sm:w-[220px]";
 
 export default ModeSelector;

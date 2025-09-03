@@ -119,6 +119,8 @@ const formatTimeAMPM = (time) => {
   if (hour === 0) hour = 12;
   return `${hour}:${minute} ${ampm}`;
 };
+
+
 const handleSaveExpenses = async () => {
   if (logs.length === 0 || logs[0].isSaved) {
     alert("Nothing to save.");
@@ -127,18 +129,32 @@ const handleSaveExpenses = async () => {
 
   const log = logs[0];
 
-  // 🚨 Check if user already saved a normal expense for this date
-  const existing = await axios.get(`${API}/api/user/expenses?date=${log.date}`, {
+  // ✅ Ensure same format as DB
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const formattedDate = formatDate(log.date);
+
+  // ✅ Fetch all expenses, then filter client-side
+  const existing = await axios.get(`${API}/api/user/expenses`, {
     headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
   });
 
-  if (existing.data?.length > 0) {
+  const alreadyExists = existing.data.some((e) => e.date === formattedDate && !e.isSpecial);
+
+  if (alreadyExists) {
     alert("A normal expense already exists for today. You cannot add another.");
     return;
   }
 
   const formattedLog = {
     ...log,
+    date: formattedDate,
     location: capitalizeWords(log.location),
     transport: capitalizeWords(log.transport),
     time: formatTimeAMPM(log.time),
@@ -156,6 +172,7 @@ const handleSaveExpenses = async () => {
     alert("Failed to save. Please try again.");
   }
 };
+
 
 const handleSaveMultiPlace = async () => {
   if (!multiPlaceData) return alert("No multi-place data to save.");
