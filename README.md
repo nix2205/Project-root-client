@@ -17,7 +17,7 @@ This repo contains the **frontend (React)** of the project.
 - Password: `suresh123`  
 
 **User**  
-- Username: `Kalyan BZA`  
+- Username: `Kalyan Bza`  
 - Password: `1234`  
 
 ---
