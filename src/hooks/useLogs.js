@@ -120,7 +120,6 @@ const formatTimeAMPM = (time) => {
   return `${hour}:${minute} ${ampm}`;
 };
 
-
 const handleSaveExpenses = async () => {
   if (logs.length === 0 || logs[0].isSaved) {
     alert("Nothing to save.");
@@ -129,9 +128,21 @@ const handleSaveExpenses = async () => {
 
   const log = logs[0];
 
-  // ✅ Ensure same format as DB
+  // ✅ Format date safely
   const formatDate = (dateStr) => {
-    const d = new Date(dateStr);
+    // If already dd/mm/yyyy → just return it
+    if (dateStr.includes("/")) {
+      return dateStr;
+    }
+
+    // If it’s ISO yyyy-mm-dd → rebuild to dd/mm/yyyy
+    if (dateStr.includes("-")) {
+      const [year, month, day] = dateStr.split("-");
+      return `${day}/${month}/${year}`;
+    }
+
+    // If anything else (fallback: use today’s date in dd/mm/yyyy)
+    const d = new Date();
     const day = String(d.getDate()).padStart(2, "0");
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const year = d.getFullYear();
@@ -145,7 +156,9 @@ const handleSaveExpenses = async () => {
     headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
   });
 
-  const alreadyExists = existing.data.some((e) => e.date === formattedDate && !e.isSpecial);
+  const alreadyExists = existing.data.some(
+    (e) => e.date === formattedDate && !e.isSpecial
+  );
 
   if (alreadyExists) {
     alert("A normal expense already exists for today. You cannot add another.");
@@ -154,7 +167,7 @@ const handleSaveExpenses = async () => {
 
   const formattedLog = {
     ...log,
-    date: formattedDate,
+    date: formattedDate, // stays in dd/mm/yyyy
     location: capitalizeWords(log.location),
     transport: capitalizeWords(log.transport),
     time: formatTimeAMPM(log.time),
@@ -172,7 +185,6 @@ const handleSaveExpenses = async () => {
     alert("Failed to save. Please try again.");
   }
 };
-
 
 const handleSaveMultiPlace = async () => {
   if (!multiPlaceData) return alert("No multi-place data to save.");

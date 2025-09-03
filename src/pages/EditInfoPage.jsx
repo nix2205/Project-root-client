@@ -74,13 +74,10 @@ const EditUserInfo = () => {
   const handleSave = async (city, mode) => {
     const updatedUser = { ...user };
     
-    // IMPORTANT: In your schema, KM and DA are per-city, not per-transport.
-    // So, we update them for the city regardless of which row was edited.
+
     updatedUser.kms[city] = Number(editRow.km);
     updatedUser.da[city] = Number(editRow.da);
 
-    // Fare, however, IS per-transport-mode.
-    // We don't save a fare for HQ rows as they have no transport mode.
     if (mode !== "HQ") {
       // Ensure the city exists in fares
       if (!updatedUser.fares[city]) {
@@ -180,10 +177,11 @@ const EditUserInfo = () => {
     if (city === user.hq) zone = "HQ";
     else if (user.ex?.includes(city)) zone = "EX";
     else if (user.os?.includes(city)) zone = "OS";
+const transports = Object.entries(cityFares)
+  // filter out unwanted keys like _id or anything that’s not a transport
+  .filter(([mode]) => mode !== "_id")
+  .map(([mode, fare]) => ({ mode, fare: fare || 0 }));
 
-    const transports = Object.entries(cityFares)
-      .map(([mode, fare]) => ({ mode, fare: fare || 0 }));
-      
     tableData[city] = {
       zone,
       km: user.kms?.[city] || 0,

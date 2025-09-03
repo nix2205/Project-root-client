@@ -1,17 +1,16 @@
-
-
-
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import logo from "../utils/TC_LOGO.png"; // Restored original import
-import bgImage from "../utils/BG_TC.png"; // Restored original import
+import { Eye, EyeOff } from "lucide-react"; // 👁️ icons
+import logo from "../utils/TC_LOGO.png";
+import bgImage from "../utils/BG_TC.png";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -42,24 +41,19 @@ function LoginPage() {
     <div
       className="flex flex-col min-h-screen"
       style={{
-        backgroundImage: `url(${bgImage})`, // Using the imported bgImage
+        backgroundImage: `url(${bgImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
-      {/* Overlay for readability, consistent with Layout */}
       <div className="flex flex-col min-h-screen bg-white/85">
-        
-        {/* Top Bar - from Layout */}
+        {/* Top Bar */}
         <header className="bg-[#1f3b64] text-white p-4 flex items-center justify-center shadow-lg">
-           <h1 className="text-2xl font-bold tracking-wide">
-             Login
-           </h1>
+          <h1 className="text-2xl font-bold tracking-wide">Login</h1>
         </header>
 
-        {/* Main Content Area */}
+        {/* Main Content */}
         <main className="flex-grow flex items-center justify-center p-4">
-          {/* Original Login Card - Centered */}
           <div
             style={{
               backgroundColor: "rgba(255, 255, 255, 0.95)",
@@ -71,27 +65,44 @@ function LoginPage() {
               textAlign: "center",
             }}
           >
-            {/* Restored Logo Image */}
             <img
               src={logo}
               alt="Logo"
               style={{ margin: "0 auto 1rem auto", width: "120px", height: "auto" }}
             />
+
             <form onSubmit={handleLogin}>
-              
               <input
                 placeholder="Enter Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 style={inputStyle}
               />
-              <input
-                type="password"
-                placeholder="Enter Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={inputStyle}
-              />
+
+              {/* Password field with eye icon */}
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ ...inputStyle, paddingRight: "40px" }}
+                />
+                <span
+                  onClick={() => password && setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    cursor: password ? "pointer" : "not-allowed",
+                    color: password ? "#2C3E65" : "#ccc",
+                  }}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </span>
+              </div>
+
               <button type="submit" style={buttonStyle}>
                 Login
               </button>
@@ -99,7 +110,7 @@ function LoginPage() {
           </div>
         </main>
 
-        {/* Bottom Bar - from Layout */}
+        {/* Bottom Bar */}
         <footer className="bg-[#1f3b64] text-white text-center p-3 text-sm">
           © {new Date().getFullYear()} Truchem
         </footer>
@@ -108,7 +119,7 @@ function LoginPage() {
   );
 }
 
-// Styles from the original component remain unchanged
+// Styles
 const inputStyle = {
   width: "100%",
   padding: "10px",
@@ -131,4 +142,3 @@ const buttonStyle = {
 };
 
 export default LoginPage;
-
