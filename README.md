@@ -1,70 +1,60 @@
-# Getting Started with Create React App
+# 💊 Pharma Tracker – Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Pharma Tracker is a **web application for companies with field employees** (like medical representatives) to **track daily logs, travel expenses, and locations automatically**.  
 
-## Available Scripts
+This repo contains the **frontend (React)** of the project.  
 
-In the project directory, you can run:
+🔗 **Backend Repo:** [Project-root-server](https://github.com/nix2205/Project-root-server)  
+🌐 **Live App:** [Pharma Tracker](https://project-root-client.vercel.app/)  
+🎥 **Demo Video:** [Watch Here](#)  
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## 🔑 Test Credentials
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+**Admin**  
+- Username: `SureshKumar`  
+- Password: `suresh123`  
 
-### `npm test`
+**User**  
+- Username: `Kalyan BZA`  
+- Password: `1234`  
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## 🚀 What the App Does
+- 📋 **User Management (Admin):** View all users, create/edit their info, manage HQ/EX/OS cities.  
+- 🧾 **Expense Tracking:** Add/edit daily travel expenses; totals are calculated automatically.  
+- 📍 **GPS Logs:** Users create daily logs with GPS-based tracking of their travel.  
+- 🚌 **Automated Fare Calculation:** Fares are auto-calculated based on cities, distances, and transport modes.  
+- 🟥 **Leave Tracking:** Leaves are highlighted in red for clarity.  
+- ➕ **Extra Expenses:** Users can record additional expenses beyond travel.  
+- 📊 **Admin Verification:** Admins can review and update logs/expenses as needed.  
+- 🔄 **Multiple Visits:** If a user travels to multiple places in a day, all are logged as separate entries.  
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 📌 Who Can Use This?
+This app is designed for **any organization with traveling employees** who need to:  
+- Log their daily movements  
+- Track and calculate expenses seamlessly  
+- Give admins full control to **verify, edit, and manage records** in one place  
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+---
 
-### `npm run eject`
+## 📂 Related Repositories
+- **Frontend (this repo):** [Project-root-client](https://github.com/nix2205/Project-root-client)  
+- **Backend:** [Project-root-server](https://github.com/nix2205/Project-root-server)  
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 📸 Screenshots
+Here are a few screenshots of the live app:
+<img width="1919" height="889" alt="image" src="https://github.com/user-attachments/assets/bf9d9b6d-3b7c-4dbd-ab1c-8c592c0d6984" />
+<img width="1918" height="881" alt="image" src="https://github.com/user-attachments/assets/93de985f-3646-4b63-b610-2652d816ee5f" />
+<img width="1889" height="874" alt="image" src="https://github.com/user-attachments/assets/b7250329-e3b0-4ece-91ea-58057b106c7e" />
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
 
-## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
