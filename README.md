@@ -1,4 +1,4 @@
-# 💊 Pharma Tracker – Frontend
+# Expense Tracker – Frontend
 
 Pharma Tracker is a **web application for companies with field employees** (like medical representatives) to **track daily logs, travel expenses, and locations automatically**.  
 
@@ -13,7 +13,7 @@ This repo contains the **frontend (React)** of the project.
 ## 🔑 Test Credentials
 
 **Admin**  
-- Username: `SureshKumar`  
+- Username: `Suresh`  
 - Password: `suresh123`  
 
 **User**  
