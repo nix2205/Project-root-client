@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import Layout from "../components/Layout"; // Restored the correct import
+import Layout from "../components/Layout";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -51,7 +51,7 @@ function AdminDashboard() {
         const totals = {};
         filteredUsers.forEach((user, index) => {
           const [normalExpensesRes, otherExpensesRes] = allUsersExpenses[index];
-          
+
           const normalTotal = normalExpensesRes.data.reduce(
             (sum, exp) => sum + exp.total,
             0
@@ -60,12 +60,11 @@ function AdminDashboard() {
             (sum, exp) => sum + exp.total,
             0
           );
-          
+
           totals[user.username] = normalTotal + otherTotal;
         });
 
         setExpenseTotals(totals);
-
       } catch (err) {
         console.error(err);
         alert("Failed to fetch user data or expenses");
@@ -74,6 +73,34 @@ function AdminDashboard() {
 
     fetchAllData();
   }, [navigate]);
+
+  // --- NEW: DELETE HANDLER FUNCTION ---
+  const handleDeleteUser = async (username) => {
+    // 1. Confirm the action with the admin
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete user "${username}"?`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { headers: { Authorization: `Bearer ${token}` } };
+
+      // 2. Send the delete request to the API
+      await axios.delete(`${API}/api/admin/user/${username}`, { headers });
+
+      // 3. Update the UI instantly by removing the user from the state
+      setUsers((currentUsers) =>
+        currentUsers.filter((user) => user.username !== username)
+      );
+      
+      alert("User deleted successfully.");
+
+    } catch (error) {
+      console.error("Failed to delete user", error);
+      alert("Error deleting user.");
+    }
+  };
 
   return (
     <Layout title="Admin Dashboard" backTo="/">
@@ -93,7 +120,7 @@ function AdminDashboard() {
 
         <div className="grid grid-cols-1 gap-4">
           {users.length > 0 ? (
-             users.map((user, index) => (
+            users.map((user, index) => (
               <div
                 key={user._id}
                 className="bg-gray-100 shadow-sm rounded-lg p-4 transition flex justify-between items-center"
@@ -112,14 +139,18 @@ function AdminDashboard() {
 
                 <div className="flex items-center gap-6">
                   <div className="text-right">
-                    <p className="text-xs text-gray-500 uppercase font-semibold">Total Exp</p>
+                    <p className="text-xs text-gray-500 uppercase font-semibold">
+                      Total Exp
+                    </p>
                     <p className="text-lg font-bold text-green-600">
                       {expenseTotals[user.username] !== undefined
-                        ? `₹${expenseTotals[user.username].toLocaleString("en-IN")}`
+                        ? `₹${expenseTotals[user.username].toLocaleString(
+                            "en-IN"
+                          )}`
                         : "..."}
                     </p>
                   </div>
-                  
+
                   <div className="flex flex-col sm:flex-row gap-2">
                     <button
                       onClick={() => navigate(`/edit-info/${user.username}`)}
@@ -128,17 +159,28 @@ function AdminDashboard() {
                       Edit
                     </button>
                     <button
-                      onClick={() => navigate(`/admin/statement/${user.username}`)}
+                      onClick={() =>
+                        navigate(`/admin/statement/${user.username}`)
+                      }
                       className="bg-gray-700 text-white px-4 py-1 rounded-md shadow-sm hover:bg-gray-800 text-sm"
                     >
                       Show Exp
+                    </button>
+                    {/* --- NEW: DELETE BUTTON --- */}
+                    <button
+                      onClick={() => handleDeleteUser(user.username)}
+                      className="bg-red-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-red-700 text-sm"
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>
               </div>
             ))
           ) : (
-            <p className="text-center text-gray-500 py-4">No users created by you have been found.</p>
+            <p className="text-center text-gray-500 py-4">
+              No users created by you have been found.
+            </p>
           )}
         </div>
       </div>
@@ -147,4 +189,3 @@ function AdminDashboard() {
 }
 
 export default AdminDashboard;
-

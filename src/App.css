@@ -36,3 +36,7 @@
     transform: rotate(360deg);
   }
 }
+/* Add this to your global CSS file */
+.pdf-mode .hide-on-pdf {
+  display: none !important;
+}

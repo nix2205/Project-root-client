@@ -1,40 +1,39 @@
-
-
 // pages/AdminExpenseStatement.jsx
 
-import React, { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useParams } from "react-router-dom";
 import axios from "axios";
 import dayjs from "dayjs";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import * as XLSX from "xlsx";
 import LogTable from "../components/LogTable";
-import OtherExpensesTable from "../components/AdminOtherExpensesTable"; // ✅ Corrected import name
+import OtherExpensesTable from "../components/AdminOtherExpensesTable";
 import Layout from "../components/Layout";
+import { Trash2, Download, FileSpreadsheet } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const AdminExpenseStatement = () => {
   const { username } = useParams();
-  const navigate = useNavigate();
-
   const [hq, setHQ] = useState("");
   const [expenses, setExpenses] = useState([]);
   const [otherExpenses, setOtherExpenses] = useState([]);
-
+  const [selectedExpenseId, setSelectedExpenseId] = useState(null);
+  const [selectedOtherExpenseId, setSelectedOtherExpenseId] = useState(null);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
+  const pdfContentRef = useRef();
   const currentMonth = dayjs().format("MMMM YYYY");
 
-  // Fetch data
   const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
-
       const resUser = await axios.get(`${API}/api/admin/user/${username}`, { headers });
       setHQ(resUser.data.hq || "");
       setExpenses(resUser.data.expenses || []);
-
-      const resOther = await axios.get(
-        `${API}/api/admin/other-expenses/${username}`, { headers }
-      );
+      const resOther = await axios.get(`${API}/api/admin/other-expenses/${username}`, { headers });
       setOtherExpenses(resOther.data || []);
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -45,7 +44,89 @@ const AdminExpenseStatement = () => {
     fetchData();
   }, [fetchData]);
 
-  // --- Normal Expense Handlers ---
+  const handleSelectExpense = (expenseId) => {
+    setSelectedExpenseId(expenseId);
+    setSelectedOtherExpenseId(null);
+  };
+
+  const handleSelectOtherExpense = (expenseId) => {
+    setSelectedOtherExpenseId(expenseId);
+    setSelectedExpenseId(null);
+  };
+
+  const handleDeleteExpense = async () => {
+    const isNormalExpense = selectedExpenseId !== null;
+    const isOtherExpense = selectedOtherExpenseId !== null;
+    if (!isNormalExpense && !isOtherExpense) return alert("Please select an expense to delete.");
+    if (!window.confirm("Are you sure you want to delete this expense entry?")) return;
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { headers: { Authorization: `Bearer ${token}` } };
+      if (isNormalExpense) {
+        await axios.delete(`${API}/api/admin/expense/${username}/${selectedExpenseId}`, headers);
+        setExpenses((prev) => prev.filter(exp => exp._id !== selectedExpenseId));
+        setSelectedExpenseId(null);
+      } else if (isOtherExpense) {
+        await axios.delete(`${API}/api/admin/other-expense/${selectedOtherExpenseId}`, headers);
+        setOtherExpenses((prev) => prev.filter(exp => exp._id !== selectedOtherExpenseId));
+        setSelectedOtherExpenseId(null);
+      }
+      alert("Expense deleted successfully.");
+    } catch (error) {
+      console.error("Failed to delete expense:", error);
+      alert("An error occurred while deleting the expense.");
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    const content = pdfContentRef.current;
+    if (!content) return;
+    setIsDownloadingPDF(true);
+    content.classList.add('pdf-mode'); // Add class to hide buttons
+    try {
+      const canvas = await html2canvas(content, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const canvasAspectRatio = canvas.width / canvas.height;
+      const pdfAspectRatio = pdfWidth / pdfHeight;
+      const finalWidth = canvasAspectRatio > pdfAspectRatio ? pdfWidth : pdfHeight * canvasAspectRatio;
+      const finalHeight = canvasAspectRatio > pdfAspectRatio ? pdfWidth / canvasAspectRatio : pdfHeight;
+      pdf.addImage(imgData, 'PNG', (pdfWidth - finalWidth) / 2, 0, finalWidth, finalHeight);
+      pdf.save(`expense-statement-${username}-${currentMonth}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF.");
+    } finally {
+      content.classList.remove('pdf-mode'); // IMPORTANT: Always remove the class
+      setIsDownloadingPDF(false);
+    }
+  };
+
+  const handleDownloadExcel = () => {
+    setIsDownloadingExcel(true);
+    try {
+      const normalExpensesHeaders = ["Date", "Time", "Place of Work", "Zone", "KM", "Mode of Transport", "Fare (TA)", "Extra TA", "TA Desc", "DA", "Extra DA", "DA Desc", "Total"];
+      const normalExpensesData = expenses.map(exp => [exp.date, exp.time, exp.location, exp.zone, exp.km, exp.transport, exp.fare ?? 0, exp.extraTA ?? 0, exp.taDesc ?? "", exp.da ?? 0, exp.extraDA ?? 0, exp.daDesc ?? "", exp.total ?? 0]);
+      const otherExpensesHeaders = ["Date", "Description", "Amount", "Extra Amount", "Extra Desc", "Total"];
+      const otherExpensesData = otherExpenses.map(exp => [exp.date, exp.description, exp.amount ?? 0, exp.extraamount ?? 0, exp.extradescription ?? "", exp.total ?? 0]);
+      const wb = XLSX.utils.book_new();
+      const wsNormal = XLSX.utils.aoa_to_sheet([normalExpensesHeaders, ...normalExpensesData]);
+      const wsOther = XLSX.utils.aoa_to_sheet([otherExpensesHeaders, ...otherExpensesData]);
+      const summaryData = [[], ["", "", "", "", "", "", "", "", "", "Subtotal 1:", subtotal1], ["", "", "", "", "", "", "", "", "", "Subtotal 2:", subtotal2], ["", "", "", "", "", "", "", "", "", "Grand Total:", grandTotal]];
+      XLSX.utils.sheet_add_aoa(wsNormal, summaryData, { origin: -1 });
+      XLSX.utils.book_append_sheet(wb, wsNormal, "Normal Expenses");
+      XLSX.utils.book_append_sheet(wb, wsOther, "Other Expenses");
+      XLSX.writeFile(wb, `Expense_Statement_${username}_${currentMonth.replace(" ", "_")}.xlsx`);
+    } catch (error) {
+      console.error("Error generating Excel:", error);
+      alert("Failed to generate Excel file.");
+    } finally {
+      setIsDownloadingExcel(false);
+    }
+  };
+
   const doSaveTA = async (expenseId, newValue) => {
     const expenseToUpdate = expenses.find((exp) => exp._id === expenseId);
     if (!expenseToUpdate) return;
@@ -56,7 +137,6 @@ const AdminExpenseStatement = () => {
       setExpenses((prev) => prev.map((exp) => exp._id === expenseId ? { ...exp, extraTA: newValue, total: newTotal } : exp));
     } catch (error) { console.error("Error updating extraTA:", error); }
   };
-
   const doSaveDA = async (expenseId, newValue) => {
     const expenseToUpdate = expenses.find((exp) => exp._id === expenseId);
     if (!expenseToUpdate) return;
@@ -68,7 +148,9 @@ const AdminExpenseStatement = () => {
     } catch (error) { console.error("Error updating extraDA:", error); }
   };
 
-  const doSaveTADesc = async (expenseId, newValue) => {
+
+
+    const doSaveTADesc = async (expenseId, newValue) => {
     try {
       const token = localStorage.getItem("token");
       await axios.put(`${API}/api/admin/expense/${username}/${expenseId}`, { taDesc: newValue }, { headers: { Authorization: `Bearer ${token}` } });
@@ -84,7 +166,6 @@ const AdminExpenseStatement = () => {
     } catch (error) { console.error("Error updating DA Desc:", error); }
   };
 
-  // ✅ --- NEW: Handlers for Other Expenses ---
   const doSaveOtherExpenseExtraAmount = async (expenseId, newAmount) => {
     try {
       const token = localStorage.getItem("token");
@@ -115,104 +196,44 @@ const AdminExpenseStatement = () => {
     }
   };
 
-  // Totals calculation
   const subtotal1 = expenses.reduce((sum, e) => sum + (e.total || 0), 0);
   const subtotal2 = otherExpenses.reduce((sum, e) => sum + (e.total || 0), 0);
   const grandTotal = subtotal1 + subtotal2;
+  const isDeleteDisabled = !selectedExpenseId && !selectedOtherExpenseId;
 
   return (
     <Layout title={`Expense Statement - ${username}`} backTo="/admin/dashboard">
-      <div className="space-y-6">
-        {/* Header Info */}
-        <div className="bg-white p-6 rounded-lg shadow flex flex-wrap items-center justify-between gap-6">
-          <div>
-            <p className="text-xl font-bold text-[#1f3b64] mb-2">
-              Username:{" "}
-              <span className="font-normal text-gray-700">{username}</span>
-            </p>
-            <p className="text-lg text-gray-700">
-              HQ:{" "}
-              <span className="font-semibold uppercase text-[#1f3b64]">
-                {hq}
-              </span>
-            </p>
-            <p className="text-lg text-gray-700">
-              Month:{" "}
-              <span className="font-semibold text-[#1f3b64]">{currentMonth}</span>
-            </p>
-            <p className="text-lg text-gray-700 mt-1">
-              Grand Total:{" "}
-              <span className="font-bold text-green-600 text-xl">
-                ₹ {grandTotal.toLocaleString("en-IN")}
-              </span>
-            </p>
+      <div ref={pdfContentRef} className="p-4 sm:p-6 bg-gray-50">
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-lg shadow flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xl font-bold text-[#1f3b64] mb-2">Username: <span className="font-normal text-gray-700">{username}</span></p>
+              <p className="text-lg text-gray-700">HQ: <span className="font-semibold uppercase text-[#1f3b64]">{hq}</span></p>
+              <p className="text-lg text-gray-700">Month: <span className="font-semibold text-[#1f3b64]">{currentMonth}</span></p>
+              <p className="text-lg text-gray-700 mt-1">Grand Total: <span className="font-bold text-green-600 text-xl">₹ {grandTotal.toLocaleString("en-IN")}</span></p>
+            </div>
+            <div className="flex flex-wrap gap-2 hide-on-pdf">
+              <button onClick={handleDownloadPDF} disabled={isDownloadingPDF} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${isDownloadingPDF ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                <Download size={16} />{isDownloadingPDF ? "..." : "PDF"}
+              </button>
+              <button onClick={handleDownloadExcel} disabled={isDownloadingExcel} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${isDownloadingExcel ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>
+                <FileSpreadsheet size={16} />{isDownloadingExcel ? "..." : "Excel"}
+              </button>
+              <button onClick={handleDeleteExpense} disabled={isDeleteDisabled} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${isDeleteDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}>
+                <Trash2 size={16} />Delete
+              </button>
+            </div>
           </div>
-          <div className="flex gap-4">
-            
-            <button
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow font-medium"
-              onClick={async () => {
-                const confirmDelete = window.confirm(
-                  `Are you sure you want to delete user "${username}"?`
-                );
-                if (!confirmDelete) return;
-
-                try {
-                  const token = localStorage.getItem("token");
-                  const headers = { Authorization: `Bearer ${token}` };
-                  await axios.delete(`${API}/api/admin/user/${username}`, {
-                    headers,
-                  });
-                  alert("User deleted successfully.");
-                  navigate("/admin/dashboard");
-                } catch (error) {
-                  console.error("Failed to delete user", error);
-                  alert("Error deleting user.");
-                }
-              }}
-            >
-              🗑️ Delete User
-            </button>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h2 className="font-bold text-xl mb-3 text-[#1f3b64]">Normal Expenses</h2>
+            <LogTable expenses={expenses} onSaveTA={doSaveTA} onSaveDA={doSaveDA} onEditTADesc={doSaveTADesc} onEditDADesc={doSaveDADesc} onEditLocationDesc={() => {}} selectedRowId={selectedExpenseId} onSelectRow={handleSelectExpense} />
+            <p className="mt-3 font-semibold text-right text-lg">Subtotal 1: <span className="font-bold text-blue-600">₹ {subtotal1.toLocaleString("en-IN")}</span></p>
           </div>
-        </div>
-
-        {/* Normal Expenses */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-bold text-xl mb-3 text-[#1f3b64]">Normal Expenses</h2>
-          <LogTable
-            expenses={expenses}
-            onSaveTA={doSaveTA}
-            onSaveDA={doSaveDA}
-            onEditTADesc={doSaveTADesc}
-            onEditDADesc={doSaveDADesc}
-            onEditLocationDesc={(id) =>
-              console.log("Edit Location Desc for", id)
-            }
-          />
-          <p className="mt-3 font-semibold text-right text-lg">
-            Subtotal 1:{" "}
-            <span className="font-bold text-blue-600">
-              ₹ {subtotal1.toLocaleString("en-IN")}
-            </span>
-          </p>
-        </div>
-
-        {/* Other Expenses */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-bold text-xl mb-3 text-[#1f3b64]">Other Expenses</h2>
-          
-          <OtherExpensesTable
-            otherExpenses={otherExpenses}
-            onSaveExtraAmount={doSaveOtherExpenseExtraAmount}
-            onSaveExtraDescription={doSaveOtherExpenseExtraDescription}
-          />
-
-          <p className="mt-3 font-semibold text-right text-lg">
-            Subtotal 2:{" "}
-            <span className="font-bold text-blue-600">
-              ₹ {subtotal2.toLocaleString("en-IN")}
-            </span>
-          </p>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h2 className="font-bold text-xl mb-3 text-[#1f3b64]">Other Expenses</h2>
+            <OtherExpensesTable otherExpenses={otherExpenses} onSaveExtraAmount={doSaveOtherExpenseExtraAmount} onSaveExtraDescription={doSaveOtherExpenseExtraDescription} selectedRowId={selectedOtherExpenseId} onSelectRow={handleSelectOtherExpense} />
+            <p className="mt-3 font-semibold text-right text-lg">Subtotal 2: <span className="font-bold text-blue-600">₹ {subtotal2.toLocaleString("en-IN")}</span></p>
+          </div>
         </div>
       </div>
     </Layout>
@@ -220,12 +241,3 @@ const AdminExpenseStatement = () => {
 };
 
 export default AdminExpenseStatement;
-
-
-
-
-
-
-
-
-
