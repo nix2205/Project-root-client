@@ -48,21 +48,58 @@ const ShowUserInfo = () => {
 
   const { username, hq, ex = [], os = [], fares, kms, da } = userInfo;
 
-  // Prepare table data
+  // ✅ Build tableData (robust)
   const tableData = {};
-  Object.keys(fares || {}).forEach((city) => {
-    const cityFares = fares[city] || {};
-    const zone = city === hq ? "HQ" : ex.includes(city) ? "EX" : os.includes(city) ? "OS" : "";
-    const transports = Object.keys(cityFares)
-      .filter((mode) => cityFares[mode] > 0)
-      .map((mode) => ({ mode, fare: cityFares[mode] }));
-    tableData[city] = { zone, km: kms?.[city] || 0, da: da?.[city] || 0, transports };
+  const normalize = (s) => (s || "").toString().trim();
+
+  const citySet = new Set([
+    ...(fares ? Object.keys(fares) : []),
+    ...(hq ? [hq] : []),
+    ...ex,
+    ...os,
+    ...(kms ? Object.keys(kms) : []),
+    ...(da ? Object.keys(da) : []),
+  ]);
+
+  citySet.forEach((rawCity) => {
+    const city = normalize(rawCity);
+    if (!city) return;
+
+    const cityFares = (fares && (fares[city] || fares[rawCity])) || {};
+    const zone =
+      city === hq
+        ? "HQ"
+        : ex.includes(city)
+        ? "EX"
+        : os.includes(city)
+        ? "OS"
+        : "";
+
+    let transports = [];
+    if (Array.isArray(cityFares.transports)) {
+      transports = cityFares.transports.map((t) => ({
+        mode: t.mode,
+        fare: t.fare,
+      }));
+    } else {
+      transports = Object.keys(cityFares || {})
+        .filter(
+          (mode) => typeof cityFares[mode] === "number" && cityFares[mode] > 0
+        )
+        .map((mode) => ({ mode, fare: cityFares[mode] }));
+    }
+
+    tableData[city] = {
+      zone,
+      km: kms?.[city] ?? kms?.[rawCity] ?? 0,
+      da: da?.[city] ?? da?.[rawCity] ?? 0,
+      transports,
+    };
   });
 
   return (
     <Layout title="User Information" backTo="/mode-selector">
       <div className="max-w-6xl mx-auto w-full space-y-8 p-4">
-        
         {/* Profile Section */}
         <div className="bg-white shadow-md rounded-2xl p-6">
           <h2 className="text-2xl font-bold text-[#2C3E65] mb-4 border-b pb-2">
@@ -74,28 +111,28 @@ const ShowUserInfo = () => {
         </div>
 
         {/* Password Reset Section */}
-<div className="bg-white shadow-md rounded-2xl p-6">
-  <h2 className="text-2xl font-bold text-[#2C3E65] mb-4 border-b pb-2">
-    Reset Password
-  </h2>
-  <div className="flex flex-col md:flex-row gap-4 items-center">
-    <input
-      type="password"
-      placeholder="Enter new password"
-      value={newPassword}
-      onChange={(e) => setNewPassword(e.target.value)}
-      className="border border-gray-300 p-3 rounded-lg flex-1 focus:outline-none focus:ring-2 focus:ring-[#2C3E65]"
-    />
-    <button
-      onClick={handlePasswordReset}
-      // Add the disabled attribute here
-      disabled={!newPassword.trim()}
-      className="bg-[#2C3E65] hover:bg-[#1F2C4D] text-white px-6 py-3 rounded-lg shadow-md transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-    >
-      Update Password
-    </button>
-  </div>
-</div>
+        <div className="bg-white shadow-md rounded-2xl p-6">
+          <h2 className="text-2xl font-bold text-[#2C3E65] mb-4 border-b pb-2">
+            Reset Password
+          </h2>
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            <input
+              type="password"
+              placeholder="Enter new password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="border border-gray-300 p-3 rounded-lg flex-1 focus:outline-none focus:ring-2 focus:ring-[#2C3E65]"
+            />
+            <button
+              onClick={handlePasswordReset}
+              disabled={!newPassword.trim()}
+              className="bg-[#2C3E65] hover:bg-[#1F2C4D] text-white px-6 py-3 rounded-lg shadow-md transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              Update Password
+            </button>
+          </div>
+        </div>
+
         {/* Fares Table */}
         <div className="bg-white shadow-md rounded-2xl overflow-x-auto">
           <h2 className="text-2xl font-bold text-[#2C3E65] p-6 border-b pb-2">
@@ -118,32 +155,47 @@ const ShowUserInfo = () => {
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(tableData).map(([city, data], i) => {
-                  const rowColor = i % 2 === 0 ? "bg-gray-50" : "bg-white";
-                  if (data.transports.length === 0) {
-                    return (
-                      <tr key={city} className={`${rowColor} hover:bg-gray-100`}>
-                        <td className="border p-3">{city.toUpperCase()}</td>
-                        <td className="border p-3">{data.zone}</td>
-                        <td className="border p-3">-</td>
-                        <td className="border p-3">{data.km}</td>
-                        <td className="border p-3">0</td>
-                        <td className="border p-3">{data.da}</td>
-                      </tr>
-                    );
-                  }
-                  return data.transports.map((t, index) => (
-                    <tr key={`${city}-${index}`} className={`${rowColor} hover:bg-gray-100`}>
-                      <td className="border p-3">{city.toUpperCase()}</td>
-                      <td className="border p-3">{data.zone}</td>
-                      <td className="border p-3 capitalize">{t.mode}</td>
-                      <td className="border p-3">{data.km}</td>
-                      <td className="border p-3">{t.fare}</td>
-                      <td className="border p-3">{data.da}</td>
-                    </tr>
-                  ));
-                })}
-              </tbody>
+  {Object.entries(tableData)
+    // ✅ Sort: HQ first, then EX, then OS (and then anything else)
+    .sort(([cityA, dataA], [cityB, dataB]) => {
+      const order = { HQ: 0, EX: 1, OS: 2, "": 3 };
+      return order[dataA.zone] - order[dataB.zone];
+    })
+    .map(([city, data], i) => {
+      const rowColor = i % 2 === 0 ? "bg-gray-50" : "bg-white";
+
+      if (data.transports.length === 0) {
+        return (
+          <tr
+            key={`${city}-HQ`}
+            className={`${rowColor} hover:bg-gray-100`}
+          >
+            <td className="border p-3">{city}</td>
+            <td className="border p-3">{data.zone}</td>
+            <td className="border p-3">-</td>
+            <td className="border p-3">{data.km}</td>
+            <td className="border p-3">0</td>
+            <td className="border p-3">{data.da}</td>
+          </tr>
+        );
+      }
+
+      return data.transports.map((t, index) => (
+        <tr
+          key={`${city}-${index}`}
+          className={`${rowColor} hover:bg-gray-100`}
+        >
+          <td className="border p-3">{city}</td>
+          <td className="border p-3">{data.zone}</td>
+          <td className="border p-3 capitalize">{t.mode}</td>
+          <td className="border p-3">{data.km}</td>
+          <td className="border p-3">{t.fare}</td>
+          <td className="border p-3">{data.da}</td>
+        </tr>
+      ));
+    })}
+</tbody>
+
             </table>
           )}
         </div>
