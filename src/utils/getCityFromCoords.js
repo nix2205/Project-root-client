@@ -81,3 +81,5 @@ export const getCityFromCoords = async ({ lat, lon }) => {
     return { city: null, fullAddress: null };
   }
 };
+
+

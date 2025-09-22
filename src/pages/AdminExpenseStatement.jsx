@@ -24,21 +24,51 @@ const AdminExpenseStatement = () => {
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
   const pdfContentRef = useRef();
-  const currentMonth = dayjs().format("MMMM YYYY");
+
+  // --- Month/year state ---
+  const current = dayjs();
+  const [selectedMonth, setSelectedMonth] = useState({
+    month: current.month() + 1, // month is 0-based in dayjs
+    year: current.year(),
+  });
+
+  // Generate options for current + 2 previous months
+  const monthOptions = [
+    current,
+    current.subtract(1, "month"),
+    current.subtract(2, "month"),
+  ].map((d) => ({
+    label: d.format("MMMM YYYY"),
+    value: { month: d.month() + 1, year: d.year() },
+  }));
 
   const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
-      const resUser = await axios.get(`${API}/api/admin/user/${username}`, { headers });
+      const { month, year } = selectedMonth;
+
+      const resUser = await axios.get(
+        `${API}/api/admin/user/${username}`,
+        { headers }
+      );
       setHQ(resUser.data.hq || "");
-      setExpenses(resUser.data.expenses || []);
-      const resOther = await axios.get(`${API}/api/admin/other-expenses/${username}`, { headers });
+
+      const resNormal = await axios.get(
+        `${API}/api/admin/normal-expenses/${username}?month=${month}&year=${year}`,
+        { headers }
+      );
+      setExpenses(resNormal.data || []);
+
+      const resOther = await axios.get(
+        `${API}/api/admin/other-expenses/${username}?month=${month}&year=${year}`,
+        { headers }
+      );
       setOtherExpenses(resOther.data || []);
     } catch (err) {
       console.error("Error fetching data:", err);
     }
-  }, [username]);
+  }, [username, selectedMonth]);
 
   useEffect(() => {
     fetchData();
@@ -82,24 +112,24 @@ const AdminExpenseStatement = () => {
     const content = pdfContentRef.current;
     if (!content) return;
     setIsDownloadingPDF(true);
-    content.classList.add('pdf-mode'); // Add class to hide buttons
+    content.classList.add("pdf-mode");
     try {
       const canvas = await html2canvas(content, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const canvasAspectRatio = canvas.width / canvas.height;
       const pdfAspectRatio = pdfWidth / pdfHeight;
       const finalWidth = canvasAspectRatio > pdfAspectRatio ? pdfWidth : pdfHeight * canvasAspectRatio;
       const finalHeight = canvasAspectRatio > pdfAspectRatio ? pdfWidth / canvasAspectRatio : pdfHeight;
-      pdf.addImage(imgData, 'PNG', (pdfWidth - finalWidth) / 2, 0, finalWidth, finalHeight);
-      pdf.save(`expense-statement-${username}-${currentMonth}.pdf`);
+      pdf.addImage(imgData, "PNG", (pdfWidth - finalWidth) / 2, 0, finalWidth, finalHeight);
+      pdf.save(`expense-statement-${username}-${dayjs().month(selectedMonth.month - 1).year(selectedMonth.year).format("MMMM_YYYY")}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
       alert("Failed to generate PDF.");
     } finally {
-      content.classList.remove('pdf-mode'); // IMPORTANT: Always remove the class
+      content.classList.remove("pdf-mode");
       setIsDownloadingPDF(false);
     }
   };
@@ -118,7 +148,7 @@ const AdminExpenseStatement = () => {
       XLSX.utils.sheet_add_aoa(wsNormal, summaryData, { origin: -1 });
       XLSX.utils.book_append_sheet(wb, wsNormal, "Normal Expenses");
       XLSX.utils.book_append_sheet(wb, wsOther, "Other Expenses");
-      XLSX.writeFile(wb, `Expense_Statement_${username}_${currentMonth.replace(" ", "_")}.xlsx`);
+      XLSX.writeFile(wb, `Expense_Statement_${username}_${dayjs().month(selectedMonth.month - 1).year(selectedMonth.year).format("MMMM_YYYY")}.xlsx`);
     } catch (error) {
       console.error("Error generating Excel:", error);
       alert("Failed to generate Excel file.");
@@ -137,6 +167,7 @@ const AdminExpenseStatement = () => {
       setExpenses((prev) => prev.map((exp) => exp._id === expenseId ? { ...exp, extraTA: newValue, total: newTotal } : exp));
     } catch (error) { console.error("Error updating extraTA:", error); }
   };
+
   const doSaveDA = async (expenseId, newValue) => {
     const expenseToUpdate = expenses.find((exp) => exp._id === expenseId);
     if (!expenseToUpdate) return;
@@ -148,9 +179,7 @@ const AdminExpenseStatement = () => {
     } catch (error) { console.error("Error updating extraDA:", error); }
   };
 
-
-
-    const doSaveTADesc = async (expenseId, newValue) => {
+  const doSaveTADesc = async (expenseId, newValue) => {
     try {
       const token = localStorage.getItem("token");
       await axios.put(`${API}/api/admin/expense/${username}/${expenseId}`, { taDesc: newValue }, { headers: { Authorization: `Bearer ${token}` } });
@@ -172,10 +201,7 @@ const AdminExpenseStatement = () => {
       const { data } = await axios.put(`${API}/api/admin/other-expense/${expenseId}`, {
         extraamount: newAmount,
       }, { headers: { Authorization: `Bearer ${token}` } });
-      
-      setOtherExpenses(prev => prev.map(exp =>
-        exp._id === expenseId ? data.expense : exp
-      ));
+      setOtherExpenses(prev => prev.map(exp => exp._id === expenseId ? data.expense : exp));
     } catch (err) {
       console.error("Error updating other expense amount:", err);
     }
@@ -187,10 +213,7 @@ const AdminExpenseStatement = () => {
       const { data } = await axios.put(`${API}/api/admin/other-expense/${expenseId}`, {
         extradescription: newDescription,
       }, { headers: { Authorization: `Bearer ${token}` } });
-
-      setOtherExpenses(prev => prev.map(exp =>
-        exp._id === expenseId ? data.expense : exp
-      ));
+      setOtherExpenses(prev => prev.map(exp => exp._id === expenseId ? data.expense : exp));
     } catch (err) {
       console.error("Error updating other expense description:", err);
     }
@@ -201,38 +224,129 @@ const AdminExpenseStatement = () => {
   const grandTotal = subtotal1 + subtotal2;
   const isDeleteDisabled = !selectedExpenseId && !selectedOtherExpenseId;
 
+
+
   return (
     <Layout title={`Expense Statement - ${username}`} backTo="/admin/dashboard">
       <div ref={pdfContentRef} className="p-4 sm:p-6 bg-gray-50">
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-lg shadow flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xl font-bold text-[#1f3b64] mb-2">Username: <span className="font-normal text-gray-700">{username}</span></p>
-              <p className="text-lg text-gray-700">HQ: <span className="font-semibold uppercase text-[#1f3b64]">{hq}</span></p>
-              <p className="text-lg text-gray-700">Month: <span className="font-semibold text-[#1f3b64]">{currentMonth}</span></p>
-              <p className="text-lg text-gray-700 mt-1">Grand Total: <span className="font-bold text-green-600 text-xl">₹ {grandTotal.toLocaleString("en-IN")}</span></p>
+              <p className="text-xl font-bold text-[#1f3b64] mb-2">
+                Username:{" "}
+                <span className="font-normal text-gray-700">{username}</span>
+              </p>
+              <p className="text-lg text-gray-700">
+                HQ:{" "}
+                <span className="font-semibold uppercase text-[#1f3b64]">
+                  {hq}
+                </span>
+              </p>
+
+              {/* Month Selector */}
+              <div className="mt-2">
+                <label className="text-lg text-gray-700 mr-2">Month:</label>
+                <select
+                  value={`${selectedMonth.month}-${selectedMonth.year}`}
+                  onChange={(e) => {
+                    const [m, y] = e.target.value.split("-").map(Number);
+                    setSelectedMonth({ month: m, year: y });
+                  }}
+                  className="border rounded px-2 py-1"
+                >
+                  {monthOptions.map((opt) => (
+                    <option
+                      key={`${opt.value.month}-${opt.value.year}`}
+                      value={`${opt.value.month}-${opt.value.year}`}
+                    >
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <p className="text-lg text-gray-700 mt-1">
+                Grand Total:{" "}
+                <span className="font-bold text-green-600 text-xl">
+                  ₹ {grandTotal.toLocaleString("en-IN")}
+                </span>
+              </p>
             </div>
             <div className="flex flex-wrap gap-2 hide-on-pdf">
-              <button onClick={handleDownloadPDF} disabled={isDownloadingPDF} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${isDownloadingPDF ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                <Download size={16} />{isDownloadingPDF ? "..." : "PDF"}
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isDownloadingPDF}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${
+                  isDownloadingPDF
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                <Download size={16} />
+                {isDownloadingPDF ? "..." : "PDF"}
               </button>
-              <button onClick={handleDownloadExcel} disabled={isDownloadingExcel} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${isDownloadingExcel ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>
-                <FileSpreadsheet size={16} />{isDownloadingExcel ? "..." : "Excel"}
+              <button
+                onClick={handleDownloadExcel}
+                disabled={isDownloadingExcel}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${
+                  isDownloadingExcel
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700"
+                }`}
+              >
+                <FileSpreadsheet size={16} />
+                {isDownloadingExcel ? "..." : "Excel"}
               </button>
-              <button onClick={handleDeleteExpense} disabled={isDeleteDisabled} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${isDeleteDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}>
-                <Trash2 size={16} />Delete
+              <button
+                onClick={handleDeleteExpense}
+                disabled={isDeleteDisabled}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${
+                  isDeleteDisabled
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
+              >
+                <Trash2 size={16} />
+                Delete
               </button>
             </div>
           </div>
+
           <div className="bg-white p-4 rounded-lg shadow">
             <h2 className="font-bold text-xl mb-3 text-[#1f3b64]">Normal Expenses</h2>
-            <LogTable expenses={expenses} onSaveTA={doSaveTA} onSaveDA={doSaveDA} onEditTADesc={doSaveTADesc} onEditDADesc={doSaveDADesc} onEditLocationDesc={() => {}} selectedRowId={selectedExpenseId} onSelectRow={handleSelectExpense} />
-            <p className="mt-3 font-semibold text-right text-lg">Subtotal 1: <span className="font-bold text-blue-600">₹ {subtotal1.toLocaleString("en-IN")}</span></p>
+            <LogTable
+              expenses={expenses}
+              onSaveTA={doSaveTA}
+              onSaveDA={doSaveDA}
+              onEditTADesc={doSaveTADesc}
+              onEditDADesc={doSaveDADesc}
+              onEditLocationDesc={() => {}}
+              selectedRowId={selectedExpenseId}
+              onSelectRow={handleSelectExpense}
+            />
+            <p className="mt-3 font-semibold text-right text-lg">
+              Subtotal 1:{" "}
+              <span className="font-bold text-blue-600">
+                ₹ {subtotal1.toLocaleString("en-IN")}
+              </span>
+            </p>
           </div>
+
           <div className="bg-white p-4 rounded-lg shadow">
             <h2 className="font-bold text-xl mb-3 text-[#1f3b64]">Other Expenses</h2>
-            <OtherExpensesTable otherExpenses={otherExpenses} onSaveExtraAmount={doSaveOtherExpenseExtraAmount} onSaveExtraDescription={doSaveOtherExpenseExtraDescription} selectedRowId={selectedOtherExpenseId} onSelectRow={handleSelectOtherExpense} />
-            <p className="mt-3 font-semibold text-right text-lg">Subtotal 2: <span className="font-bold text-blue-600">₹ {subtotal2.toLocaleString("en-IN")}</span></p>
+            <OtherExpensesTable
+              otherExpenses={otherExpenses}
+              onSaveExtraAmount={doSaveOtherExpenseExtraAmount}
+              onSaveExtraDescription={doSaveOtherExpenseExtraDescription}
+              selectedRowId={selectedOtherExpenseId}
+              onSelectRow={handleSelectOtherExpense}
+            />
+            <p className="mt-3 font-semibold text-right text-lg">
+              Subtotal 2:{" "}
+              <span className="font-bold text-blue-600">
+                ₹ {subtotal2.toLocaleString("en-IN")}
+              </span>
+            </p>
           </div>
         </div>
       </div>
