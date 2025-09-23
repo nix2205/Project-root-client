@@ -187,7 +187,7 @@ export const useLogs = (userInfo) => {
 
     const formattedDate = formatDate(log.date);
 
-    const existing = await axios.get(`${API}/user/expenses`, {
+    const existing = await axios.get(`${API}/api/user/expenses`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
 
@@ -210,7 +210,7 @@ export const useLogs = (userInfo) => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${API}/user/add-expense`, formattedLog, {
+      await axios.post(`${API}/api/user/add-expense`, formattedLog, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Expense saved!");
@@ -240,7 +240,7 @@ export const useLogs = (userInfo) => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${API}/user/add-expense`, payload, {
+      await axios.post(`${API}/api/user/add-expense`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Multi-place expense saved! Marked as special.");
