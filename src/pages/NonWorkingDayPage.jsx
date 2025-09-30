@@ -5,8 +5,15 @@ import Layout from "../components/Layout";
 const NonWorkingDayPage = () => {
   const [reason, setReason] = useState("");
   const [customReason, setCustomReason] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedDate, setSubmittedDate] = useState(null); // store submitted date
   const API = process.env.REACT_APP_BACKEND_URL;
+
+  const today = new Date();
+  const minDate = new Date(today.getFullYear(), today.getMonth() - 1, 1); // start of prev month
+  const maxDate = new Date(today.getFullYear(), today.getMonth() + 1, 0); // end of current month
+
+  const formatForInput = (d) => d.toISOString().split("T")[0]; // yyyy-mm-dd
+    const [date, setDate] = useState(formatForInput(today));
 
   const handleSave = async () => {
     if (!reason || (reason === "Others" && !customReason.trim())) {
@@ -14,12 +21,26 @@ const NonWorkingDayPage = () => {
       return;
     }
 
+    if (!date) {
+      alert("Please select or enter a date");
+      return;
+    }
+
+    // Validate entered date
+    const enteredDate = new Date(date);
+    if (enteredDate < minDate || enteredDate > maxDate) {
+      alert("Date must be within current or previous month.");
+      return;
+    }
+
     const selectedReason = reason === "Others" ? customReason : reason;
-    const date = new Date().toLocaleDateString("en-GB");
+
+    // Format date & time
+    const formattedDate = enteredDate.toLocaleDateString("en-GB");
     const time = new Date().toLocaleTimeString("en-GB");
 
     const expenseEntry = {
-      date,
+      date: formattedDate,
       time,
       location: selectedReason,
       zone: "-",
@@ -39,7 +60,7 @@ const NonWorkingDayPage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setSubmitted(true);
+      setSubmittedDate(formattedDate); // store date for showing message
     } catch (err) {
       console.error("Error saving non-working day:", err);
       if (err.response?.data?.msg) {
@@ -54,58 +75,74 @@ const NonWorkingDayPage = () => {
     <Layout title="NON-WORKING DAY" backTo="/mode-selector">
       <div className="flex justify-center items-center mt-6">
         <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-md">
-          {submitted ? (
-            <p className="text-green-600 font-semibold text-lg text-center">
-              ✅ Your non-working day has been recorded.
-            </p>
-          ) : (
-            <>
-              <h2 className="text-lg font-semibold mb-4 text-center">
-                Mark Non-Working Day
-              </h2>
+          <h2 className="text-lg font-semibold mb-4 text-center">
+            Mark Non-Working Day
+          </h2>
 
-              {/* Reason Dropdown */}
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2">
-                  Select reason:
-                </label>
-                <select
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-[#2C3E65]"
-                >
-                  <option value="">-- Choose --</option>
-                  <option value="Sunday">Sunday</option>
-                  <option value="Week Off">Week Off</option>
-                  <option value="Leave">Leave</option>
-                  <option value="Others">Others</option>
-                </select>
-              </div>
+          {/* Date Selector */}
+          <div className="mb-4">
+            <label className="block text-gray-700 font-medium mb-2">
+              Select date:
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              min={formatForInput(minDate)}
+              max={formatForInput(maxDate)}
+              className="w-full border border-gray-300 rounded-lg p-2 mb-2 focus:outline-none focus:ring-2 focus:ring-[#2C3E65]"
+            />
+          </div>
 
-              {/* Custom Reason */}
-              {reason === "Others" && (
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    placeholder="Enter your reason"
-                    value={customReason}
-                    onChange={(e) => setCustomReason(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-[#2C3E65]"
-                  />
-                </div>
-              )}
+          {/* Reason Dropdown */}
+          <div className="mb-4">
+            <label className="block text-gray-700 font-medium mb-2">
+              Select reason:
+            </label>
+            <select
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-[#2C3E65]"
+            >
+              <option value="">-- Choose --</option>
+              <option value="Sunday">Sunday</option>
+              <option value="Week Off">Week Off</option>
+              <option value="Leave">Leave</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-center gap-4">
-                <button
-                  onClick={handleSave}
-                  className="bg-[#2C3E65] text-white px-6 py-2 rounded-lg shadow-md hover:bg-[#1F2A49] transition"
-                >
-                  Submit
-                </button>
-              </div>
-            </>
+          {/* Custom Reason */}
+          {reason === "Others" && (
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Enter your reason"
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-[#2C3E65]"
+              />
+            </div>
           )}
+
+          
+
+          {/* Submit Button */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={handleSave}
+              className="bg-[#2C3E65] text-white px-6 py-2 rounded-lg shadow-md hover:bg-[#1F2A49] transition"
+            >
+              Submit
+            </button>
+
+            {/* Show submitted message if any */}
+            {submittedDate && (
+              <p className="text-green-600 font-semibold mt-2 text-center">
+                ✅ Submitted for {submittedDate}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </Layout>

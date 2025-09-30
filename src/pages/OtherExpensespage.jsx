@@ -14,7 +14,7 @@ const OtherExpensesPage = () => {
   const lastAllowedDate = today; 
 
   const [date, setDate] = useState(today.format("YYYY-MM-DD"));
-  const [entries, setEntries] = useState([{ amount: "", description: "" }]);
+  const [entries, setEntries] = useState([{ amount: "", description: "",billNo: "" }]);
   const [message, setMessage] = useState("");
 
   const handleChange = (index, field, value) => {
@@ -23,7 +23,7 @@ const OtherExpensesPage = () => {
     setEntries(updated);
   };
 
-  const addEntry = () => setEntries([...entries, { amount: "", description: "" }]);
+  const addEntry = () => setEntries([...entries, { amount: "", description: "", billNo: "" }]);
   const calculateTotal = () => entries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
   const validateDate = (selectedDate) => {
     const dateObj = dayjs(selectedDate);
@@ -42,7 +42,7 @@ const OtherExpensesPage = () => {
       const formattedDate = dayjs(date).format("DD/MM/YYYY");
 
       const validEntries = entries.filter(
-        (e) => e.amount && !isNaN(e.amount) && e.description.trim() !== ""
+        (e) => e.amount && !isNaN(e.amount) && e.description.trim() && e.billNo.trim() !== ""
       );
 
       if (validEntries.length === 0) {
@@ -106,6 +106,16 @@ const OtherExpensesPage = () => {
                   placeholder="Enter description"
                 />
               </div>
+              <div>
+    <label className="block mb-1 font-medium">Bill No:</label>
+    <input
+      type="text"
+      className="border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-[#2C3E65]"
+      value={entry.billNo}
+      onChange={(e) => handleChange(idx, "billNo", e.target.value)}
+      placeholder="Enter bill number"
+    />
+  </div>
             </div>
           ))}
 

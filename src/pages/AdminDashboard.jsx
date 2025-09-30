@@ -9,6 +9,8 @@ const API = process.env.REACT_APP_BACKEND_URL;
 function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [expenseTotals, setExpenseTotals] = useState({});
+  const [lastReported, setLastReported] = useState({});
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,6 +48,20 @@ function AdminDashboard() {
           return Promise.all([normalExpensesPromise, otherExpensesPromise]);
         });
 
+        const lastReportedPromises = filteredUsers.map((user) =>
+  axios.get(`${API}/api/admin/last-reported/${user.username}`, headers)
+);
+
+const lastReportedResults = await Promise.all(lastReportedPromises);
+
+const lastReportedMap = {};
+filteredUsers.forEach((user, i) => {
+  lastReportedMap[user.username] = lastReportedResults[i].data.lastReported;
+});
+
+setLastReported(lastReportedMap);
+
+
         const allUsersExpenses = await Promise.all(expensePromises);
 
         const totals = {};
@@ -73,6 +89,8 @@ function AdminDashboard() {
 
     fetchAllData();
   }, [navigate]);
+
+  
 
   // --- NEW: DELETE HANDLER FUNCTION ---
   const handleDeleteUser = async (username) => {
@@ -132,8 +150,11 @@ function AdminDashboard() {
                       {user.username}
                     </h4>
                     <p className="text-sm text-gray-500 mt-1">
-                      (HQ: {user.hq || "N/A"})
+                      {user.hq || "N/A"}
                     </p>
+                    <p className="text-sm text-gray-500 mt-1">
+  Last Reported: {lastReported[user.username] || "N/A"}
+</p>
                   </div>
                 </div>
 

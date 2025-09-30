@@ -139,8 +139,8 @@ const AdminExpenseStatement = () => {
     try {
       const normalExpensesHeaders = ["Date", "Time", "Place of Work", "Zone", "KM", "Mode of Transport", "Fare (TA)", "Extra TA", "TA Desc", "DA", "Extra DA", "DA Desc", "Total"];
       const normalExpensesData = expenses.map(exp => [exp.date, exp.time, exp.location, exp.zone, exp.km, exp.transport, exp.fare ?? 0, exp.extraTA ?? 0, exp.taDesc ?? "", exp.da ?? 0, exp.extraDA ?? 0, exp.daDesc ?? "", exp.total ?? 0]);
-      const otherExpensesHeaders = ["Date", "Description", "Amount", "Extra Amount", "Extra Desc", "Total"];
-      const otherExpensesData = otherExpenses.map(exp => [exp.date, exp.description, exp.amount ?? 0, exp.extraamount ?? 0, exp.extradescription ?? "", exp.total ?? 0]);
+      const otherExpensesHeaders = ["Date", "Bill No", "Description", "Amount", "Extra Amount", "Extra Desc", "Total"];
+      const otherExpensesData = otherExpenses.map(exp => [exp.date,  exp.billNo || "-", exp.description, exp.amount ?? 0, exp.extraamount ?? 0, exp.extradescription ?? "", exp.total ?? 0]);
       const wb = XLSX.utils.book_new();
       const wsNormal = XLSX.utils.aoa_to_sheet([normalExpensesHeaders, ...normalExpensesData]);
       const wsOther = XLSX.utils.aoa_to_sheet([otherExpensesHeaders, ...otherExpensesData]);
