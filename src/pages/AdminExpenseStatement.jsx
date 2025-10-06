@@ -218,6 +218,29 @@ const AdminExpenseStatement = () => {
       console.error("Error updating other expense description:", err);
     }
   };
+  const handleApproveExpense = async () => {
+  if (!window.confirm(`Approve expenses for ${dayjs().month(selectedMonth.month - 1).year(selectedMonth.year).format("MMMM YYYY")}?`))
+    return;
+
+  try {
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const { month, year } = selectedMonth;
+
+    await axios.put(
+      `${API}/api/admin/approve-expense/${username}`,
+      { month, year, total: grandTotal },
+      { headers }
+    );
+
+    alert("Expense approved successfully ✅");
+  } catch (error) {
+    console.error("Error approving expense:", error);
+    alert("Failed to approve expense.");
+  }
+};
+
 
   const subtotal1 = expenses.reduce((sum, e) => sum + (e.total || 0), 0);
   const subtotal2 = otherExpenses.reduce((sum, e) => sum + (e.total || 0), 0);
@@ -271,6 +294,13 @@ const AdminExpenseStatement = () => {
                   ₹ {grandTotal.toLocaleString("en-IN")}
                 </span>
               </p>
+              <button
+  onClick={handleApproveExpense}
+  className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition bg-purple-600 hover:bg-purple-700"
+>
+  ✅ Approve Expense
+</button>
+
             </div>
             <div className="flex flex-wrap gap-2 hide-on-pdf">
               <button

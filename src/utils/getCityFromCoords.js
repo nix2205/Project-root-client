@@ -1,6 +1,4 @@
-
 // utils/getCityFromCoords.js
-
 // Fallback: IP-based geolocation
 const getLocationByIP = async () => {
   try {
@@ -68,6 +66,14 @@ export const getCityFromCoords = async ({ lat, lon }) => {
     const components = json.results[0].components;
     const fullAddress = json.results[0].formatted;
 
+    console.log("🗺️ OpenCage API Detailed Info:");
+    console.log("Coordinates:", { lat, lon });
+    console.log("Full Address:", fullAddress);
+    console.log("Components:", components);
+    console.log("City picked by OpenCage:", 
+      components.city || components.town || components.village || components.county || null
+    );
+    
     const city =
       components.city ||
       components.town ||

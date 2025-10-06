@@ -9,7 +9,9 @@ const API = process.env.REACT_APP_BACKEND_URL;
 function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [expenseTotals, setExpenseTotals] = useState({});
+  const [monthlyTotals, setMonthlyTotals] = useState({});
   const [lastReported, setLastReported] = useState({});
+
 
   const navigate = useNavigate();
 
@@ -48,39 +50,113 @@ function AdminDashboard() {
           return Promise.all([normalExpensesPromise, otherExpensesPromise]);
         });
 
-        const lastReportedPromises = filteredUsers.map((user) =>
-  axios.get(`${API}/api/admin/last-reported/${user.username}`, headers)
-);
+//         const lastReportedPromises = filteredUsers.map((user) =>
+//   axios.get(`${API}/api/admin/last-reported/${user.username}`, headers)
+// );
 
-const lastReportedResults = await Promise.all(lastReportedPromises);
+// const lastReportedResults = await Promise.all(lastReportedPromises);
 
-const lastReportedMap = {};
-filteredUsers.forEach((user, i) => {
-  lastReportedMap[user.username] = lastReportedResults[i].data.lastReported;
-});
+// const lastReportedMap = {};
+// filteredUsers.forEach((user, i) => {
+//   lastReportedMap[user.username] = lastReportedResults[i].data.lastReported;
+// });
 
-setLastReported(lastReportedMap);
+// setLastReported(lastReportedMap);
 
 
+        // const allUsersExpenses = await Promise.all(expensePromises);
+
+        // const totals = {};
+        // filteredUsers.forEach((user, index) => {
+        //   const [normalExpensesRes, otherExpensesRes] = allUsersExpenses[index];
+
+        //   const normalTotal = normalExpensesRes.data.reduce(
+        //     (sum, exp) => sum + exp.total,
+        //     0
+        //   );
+        //   const otherTotal = otherExpensesRes.data.reduce(
+        //     (sum, exp) => sum + exp.total,
+        //     0
+        //   );
+
+        //   totals[user.username] = normalTotal + otherTotal;
+        // });
+
+        // setExpenseTotals(totals);
         const allUsersExpenses = await Promise.all(expensePromises);
 
-        const totals = {};
-        filteredUsers.forEach((user, index) => {
-          const [normalExpensesRes, otherExpensesRes] = allUsersExpenses[index];
+const totals = {};
+const lastReportedMap = {};
 
-          const normalTotal = normalExpensesRes.data.reduce(
-            (sum, exp) => sum + exp.total,
-            0
-          );
-          const otherTotal = otherExpensesRes.data.reduce(
-            (sum, exp) => sum + exp.total,
-            0
-          );
+// filteredUsers.forEach((user, index) => {
+//   const [normalExpensesRes, otherExpensesRes] = allUsersExpenses[index];
+//   const normalExpenses = normalExpensesRes.data || [];
+//   const otherExpenses = otherExpensesRes.data || [];
 
-          totals[user.username] = normalTotal + otherTotal;
-        });
+//   // --- Total expense = normal + other ---
+//   const normalTotal = normalExpenses.reduce((sum, exp) => sum + exp.total, 0);
+//   const otherTotal = otherExpenses.reduce((sum, exp) => sum + exp.total, 0);
+//   totals[user.username] = normalTotal + otherTotal;
 
-        setExpenseTotals(totals);
+
+// Inside useEffect after fetching users
+const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+const monthlyTotalsMap = {};
+
+// For each user
+filteredUsers.forEach((user, i) => {
+  const [normalExpensesRes, otherExpensesRes] = allUsersExpenses[i];
+  const normalExpenses = normalExpensesRes.data || [];
+  const otherExpenses = otherExpensesRes.data || [];
+
+  // Group expenses by month-year
+  const allExpenses = [...normalExpenses, ...otherExpenses];
+
+  const monthlyTotals = {};
+
+  allExpenses.forEach((exp) => {
+    if (!exp.date) return;
+    // convert dd/mm/yyyy to "MMM-YYYY"
+    const [day, mon, yr] = exp.date.split("/");
+    const monthName = monthNames[Number(mon) - 1];
+    const key = `${monthName}`;
+    monthlyTotals[key] = (monthlyTotals[key] || 0) + (exp.total || 0);
+  });
+
+  // For tick/cross, check user.months for approval
+  const monthlyStatus = {};
+  Object.entries(monthlyTotals).forEach(([monthKey, total]) => {
+    const approvedMonth = (user.months || []).find(
+      (m) => m.month === monthKey && m.total === total && m.approved
+    );
+    monthlyStatus[monthKey] = approvedMonth ? "tick" : "cross";
+  });
+
+  monthlyTotalsMap[user.username] = { totals: monthlyTotals, status: monthlyStatus };
+
+
+
+
+  // --- Find last reported date (only from normal expenses) ---
+  const normalDates = normalExpenses.map((exp) => exp.date).filter(Boolean);
+
+  if (normalDates.length > 0) {
+    const latestDate = normalDates.reduce((latest, current) => {
+      const latestTime = new Date(latest.split("/").reverse().join("-")).getTime();
+      const currentTime = new Date(current.split("/").reverse().join("-")).getTime();
+      return currentTime > latestTime ? current : latest;
+    });
+    lastReportedMap[user.username] = latestDate;
+  } else {
+    lastReportedMap[user.username] = null;
+  }
+});
+
+setMonthlyTotals(monthlyTotalsMap);
+setExpenseTotals(totals);
+setLastReported(lastReportedMap);
+
       } catch (err) {
         console.error(err);
         alert("Failed to fetch user data or expenses");
@@ -160,25 +236,21 @@ setLastReported(lastReportedMap);
 
                 <div className="flex items-center gap-6">
                   <div className="text-right">
-                    <p className="text-xs text-gray-500 uppercase font-semibold">
-                      Total Exp
-                    </p>
-                    <p className="text-lg font-bold text-green-600">
-                      {expenseTotals[user.username] !== undefined
-                        ? `₹${expenseTotals[user.username].toLocaleString(
-                            "en-IN"
-                          )}`
-                        : "..."}
-                    </p>
-                  </div>
+  <p className="text-xs text-gray-500 uppercase font-semibold">Monthly Exp</p>
+  {monthlyTotals[user.username] ? (
+    Object.entries(monthlyTotals[user.username].totals).map(([month, total]) => (
+      <p key={month} className="text-sm">
+        {month}: ₹{total.toLocaleString("en-IN")}{" "}
+        {monthlyTotals[user.username].status[month] === "tick" ? "✅" : "❌"}
+      </p>
+    ))
+  ) : (
+    <p>...</p>
+  )}
+</div>
+
 
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <button
-                      onClick={() => navigate(`/edit-info/${user.username}`)}
-                      className="bg-blue-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-blue-700 text-sm"
-                    >
-                      Edit
-                    </button>
                     <button
                       onClick={() =>
                         navigate(`/admin/statement/${user.username}`)
@@ -187,6 +259,13 @@ setLastReported(lastReportedMap);
                     >
                       Show Exp
                     </button>
+                    <button
+                      onClick={() => navigate(`/edit-info/${user.username}`)}
+                      className="bg-blue-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-blue-700 text-sm"
+                    >
+                      Edit
+                    </button>
+                    
                     {/* --- NEW: DELETE BUTTON --- */}
                     <button
                       onClick={() => handleDeleteUser(user.username)}

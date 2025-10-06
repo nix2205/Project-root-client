@@ -51,7 +51,14 @@ const UserLogTable = ({ expenses = [] }) => {
           </tr>
         </thead>
         <tbody>
-          {Object.entries(grouped).map(([date, logs]) => {
+          {Object.entries(grouped)
+  .sort(([a], [b]) => {
+    const [da, ma, ya] = a.split("/").map(Number);
+    const [db, mb, yb] = b.split("/").map(Number);
+    return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
+  })
+  .map(([date, logs]) => {
+
             const subtotal = logs.reduce((sum, e) => sum + (Number(e.total) || 0), 0);
             const isMultiple = logs.length > 1;
             const isExpanded = expandedDates[date];

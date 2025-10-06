@@ -164,29 +164,41 @@ export const useLogs = (userInfo) => {
     return `${hour}:${minute} ${ampm}`;
   };
 
-  const handleSaveExpenses = async () => {
-    if (logs.length === 0 || logs[0].isSaved) {
-      alert("Nothing to save.");
-      return;
-    }
+const handleSaveExpenses = async () => {
+  if (logs.length === 0 || logs[0].isSaved) {
+    alert("Nothing to save.");
+    return;
+  }
 
-    const log = logs[0];
+  const log = logs[0];
 
-    const formatDate = (dateStr) => {
-      if (dateStr.includes("/")) return dateStr;
-      if (dateStr.includes("-")) {
-        const [year, month, day] = dateStr.split("-");
-        return `${day}/${month}/${year}`;
-      }
-      const d = new Date();
-      const day = String(d.getDate()).padStart(2, "0");
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const year = d.getFullYear();
+  // 🚨 New validation: must confirm MOT before saving
+  if (!log.transport || log.transport === "") {
+    alert("Please select a Mode of Transport (MOT) and click 'Confirm MOT' before saving.");
+    return;
+  }
+
+  if (log.location !== userInfo.hq && log.transport === "-") {
+    alert("Invalid MOT: please select and confirm a valid mode of transport before saving.");
+    return;
+  }
+
+  const formatDate = (dateStr) => {
+    if (dateStr.includes("/")) return dateStr;
+    if (dateStr.includes("-")) {
+      const [year, month, day] = dateStr.split("-");
       return `${day}/${month}/${year}`;
-    };
+    }
+    const d = new Date();
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
-    const formattedDate = formatDate(log.date);
+  const formattedDate = formatDate(log.date);
 
+  try {
     const existing = await axios.get(`${API}/api/user/expenses`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
@@ -208,18 +220,18 @@ export const useLogs = (userInfo) => {
       time: formatTimeAMPM(log.time),
     };
 
-    try {
-      const token = localStorage.getItem("token");
-      await axios.post(`${API}/api/user/add-expense`, formattedLog, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      alert("Expense saved!");
-      setLogs([{ ...formattedLog, isSaved: true }]);
-    } catch (err) {
-      console.error("Error saving field work:", err);
-      alert("Failed to save. Please try again.");
-    }
-  };
+    const token = localStorage.getItem("token");
+    await axios.post(`${API}/api/user/add-expense`, formattedLog, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    alert("Expense saved!");
+    setLogs([{ ...formattedLog, isSaved: true }]);
+  } catch (err) {
+    console.error("Error saving field work:", err);
+    alert("Failed to save. Please try again.");
+  }
+};
 
   const handleSaveMultiPlace = async () => {
     if (!multiPlaceData) return alert("No multi-place data to save.");
