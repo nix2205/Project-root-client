@@ -34,8 +34,9 @@ const UserOtherExpensesTable = ({ otherExpenses = [] }) => {
             <th className="border p-3 w-12 text-center">Sl.No</th>
 
             <th className="border p-3 w-32 text-center">Date</th>
+            <th className="border p-3 w-28 text-center">Bill No</th> {/* ✅ NEW */}
+
             <th className="border p-3 w-auto text-left">Description</th>
-                            <th className="border p-3 w-28 text-center">Bill No</th> {/* ✅ NEW */}
 
             <th className="border p-3 w-48 text-center">Amount (₹)</th>
           </tr>
@@ -56,14 +57,12 @@ const UserOtherExpensesTable = ({ otherExpenses = [] }) => {
                     </td>
                   )}
 
+                  <td className="border p-2 text-center">{entry.billNo || "-"}</td> {/* ✅ NEW */}
 
 
                   <td className="border p-2">
                     <p>{entry.description}</p>
                   </td>
-                                    <td className="border p-2 text-center">{entry.billNo || "-"}</td> {/* ✅ NEW */}
-
-
                   <td className="border p-2 text-right">
                     <div className="flex justify-end items-center gap-2">
                       <span>{entry.amount.toLocaleString("en-IN")}</span>

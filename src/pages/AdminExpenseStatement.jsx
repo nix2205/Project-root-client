@@ -25,14 +25,12 @@ const AdminExpenseStatement = () => {
   const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
   const pdfContentRef = useRef();
 
-  // --- Month/year state ---
   const current = dayjs();
   const [selectedMonth, setSelectedMonth] = useState({
-    month: current.month() + 1, // month is 0-based in dayjs
+    month: current.month() + 1,
     year: current.year(),
   });
 
-  // Generate options for current + 2 previous months
   const monthOptions = [
     current,
     current.subtract(1, "month"),
@@ -48,10 +46,7 @@ const AdminExpenseStatement = () => {
       const headers = { Authorization: `Bearer ${token}` };
       const { month, year } = selectedMonth;
 
-      const resUser = await axios.get(
-        `${API}/api/admin/user/${username}`,
-        { headers }
-      );
+      const resUser = await axios.get(`${API}/api/admin/user/${username}`, { headers });
       setHQ(resUser.data.hq || "");
 
       const resNormal = await axios.get(
@@ -218,170 +213,169 @@ const AdminExpenseStatement = () => {
       console.error("Error updating other expense description:", err);
     }
   };
+  
   const handleApproveExpense = async () => {
-  if (!window.confirm(`Approve expenses for ${dayjs().month(selectedMonth.month - 1).year(selectedMonth.year).format("MMMM YYYY")}?`))
-    return;
+    if (!window.confirm(`Approve expenses for ${dayjs().month(selectedMonth.month - 1).year(selectedMonth.year).format("MMMM YYYY")}?`))
+      return;
 
-  try {
-    const token = localStorage.getItem("token");
-    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+      const { month, year } = selectedMonth;
 
-    const { month, year } = selectedMonth;
+      await axios.put(
+        `${API}/api/admin/approve-expense/${username}`,
+        { month, year, total: grandTotal },
+        { headers }
+      );
 
-    await axios.put(
-      `${API}/api/admin/approve-expense/${username}`,
-      { month, year, total: grandTotal },
-      { headers }
-    );
-
-    alert("Expense approved successfully ✅");
-  } catch (error) {
-    console.error("Error approving expense:", error);
-    alert("Failed to approve expense.");
-  }
-};
-
+      alert("Expense approved successfully ✅");
+    } catch (error) {
+      console.error("Error approving expense:", error);
+      alert("Failed to approve expense.");
+    }
+  };
 
   const subtotal1 = expenses.reduce((sum, e) => sum + (e.total || 0), 0);
   const subtotal2 = otherExpenses.reduce((sum, e) => sum + (e.total || 0), 0);
   const grandTotal = subtotal1 + subtotal2;
   const isDeleteDisabled = !selectedExpenseId && !selectedOtherExpenseId;
 
+return (
+  <Layout title={`Expense Statement - ${username}`} backTo="/admin/dashboard">
+    <div ref={pdfContentRef} className="p-4 sm:p-6 bg-gray-50">
+      <div className="space-y-6">
+        {/* User Info and Month Selector */}
+        <div className="bg-white p-6 rounded-lg shadow flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xl font-bold text-[#1f3b64] mb-2">
+              Username: <span className="font-normal text-gray-700">{username}</span>
+            </p>
+            <p className="text-lg text-gray-700">
+              HQ: <span className="font-semibold uppercase text-[#1f3b64]">{hq}</span>
+            </p>
 
-
-  return (
-    <Layout title={`Expense Statement - ${username}`} backTo="/admin/dashboard">
-      <div ref={pdfContentRef} className="p-4 sm:p-6 bg-gray-50">
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-lg shadow flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xl font-bold text-[#1f3b64] mb-2">
-                Username:{" "}
-                <span className="font-normal text-gray-700">{username}</span>
-              </p>
-              <p className="text-lg text-gray-700">
-                HQ:{" "}
-                <span className="font-semibold uppercase text-[#1f3b64]">
-                  {hq}
-                </span>
-              </p>
-
-              {/* Month Selector */}
-              <div className="mt-2">
-                <label className="text-lg text-gray-700 mr-2">Month:</label>
-                <select
-                  value={`${selectedMonth.month}-${selectedMonth.year}`}
-                  onChange={(e) => {
-                    const [m, y] = e.target.value.split("-").map(Number);
-                    setSelectedMonth({ month: m, year: y });
-                  }}
-                  className="border rounded px-2 py-1"
-                >
-                  {monthOptions.map((opt) => (
-                    <option
-                      key={`${opt.value.month}-${opt.value.year}`}
-                      value={`${opt.value.month}-${opt.value.year}`}
-                    >
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <p className="text-lg text-gray-700 mt-1">
-                Grand Total:{" "}
-                <span className="font-bold text-green-600 text-xl">
-                  ₹ {grandTotal.toLocaleString("en-IN")}
-                </span>
-              </p>
-              <button
-  onClick={handleApproveExpense}
-  className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition bg-purple-600 hover:bg-purple-700"
->
-  ✅ Approve Expense
-</button>
-
-            </div>
-            <div className="flex flex-wrap gap-2 hide-on-pdf">
-              <button
-                onClick={handleDownloadPDF}
-                disabled={isDownloadingPDF}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${
-                  isDownloadingPDF
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
+            {/* Month Selector */}
+            <div className="mt-2">
+              <label className="text-lg text-gray-700 mr-2">Month:</label>
+              <select
+                value={`${selectedMonth.month}-${selectedMonth.year}`}
+                onChange={(e) => {
+                  const [m, y] = e.target.value.split("-").map(Number);
+                  setSelectedMonth({ month: m, year: y });
+                }}
+                className="border rounded px-2 py-1"
               >
-                <Download size={16} />
-                {isDownloadingPDF ? "..." : "PDF"}
-              </button>
-              <button
-                onClick={handleDownloadExcel}
-                disabled={isDownloadingExcel}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${
-                  isDownloadingExcel
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-green-600 hover:bg-green-700"
-                }`}
-              >
-                <FileSpreadsheet size={16} />
-                {isDownloadingExcel ? "..." : "Excel"}
-              </button>
-              <button
-                onClick={handleDeleteExpense}
-                disabled={isDeleteDisabled}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${
-                  isDeleteDisabled
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-red-600 hover:bg-red-700"
-                }`}
-              >
-                <Trash2 size={16} />
-                Delete
-              </button>
+                {monthOptions.map((opt) => (
+                  <option
+                    key={`${opt.value.month}-${opt.value.year}`}
+                    value={`${opt.value.month}-${opt.value.year}`}
+                  >
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h2 className="font-bold text-xl mb-3 text-[#1f3b64]">Normal Expenses</h2>
-            <LogTable
-              expenses={expenses}
-              onSaveTA={doSaveTA}
-              onSaveDA={doSaveDA}
-              onEditTADesc={doSaveTADesc}
-              onEditDADesc={doSaveDADesc}
-              onEditLocationDesc={() => {}}
-              selectedRowId={selectedExpenseId}
-              onSelectRow={handleSelectExpense}
-            />
-            <p className="mt-3 font-semibold text-right text-lg">
-              Subtotal 1:{" "}
-              <span className="font-bold text-blue-600">
-                ₹ {subtotal1.toLocaleString("en-IN")}
-              </span>
-            </p>
-          </div>
+          <div className="flex flex-wrap gap-2 hide-on-pdf">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isDownloadingPDF}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${
+                isDownloadingPDF
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
+            >
+              <Download size={16} />
+              {isDownloadingPDF ? "..." : "PDF"}
+            </button>
 
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h2 className="font-bold text-xl mb-3 text-[#1f3b64]">Other Expenses</h2>
-            <OtherExpensesTable
-              otherExpenses={otherExpenses}
-              onSaveExtraAmount={doSaveOtherExpenseExtraAmount}
-              onSaveExtraDescription={doSaveOtherExpenseExtraDescription}
-              selectedRowId={selectedOtherExpenseId}
-              onSelectRow={handleSelectOtherExpense}
-            />
-            <p className="mt-3 font-semibold text-right text-lg">
-              Subtotal 2:{" "}
-              <span className="font-bold text-blue-600">
-                ₹ {subtotal2.toLocaleString("en-IN")}
-              </span>
-            </p>
+            <button
+              onClick={handleDownloadExcel}
+              disabled={isDownloadingExcel}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${
+                isDownloadingExcel
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-green-600 hover:bg-green-700"
+              }`}
+            >
+              <FileSpreadsheet size={16} />
+              {isDownloadingExcel ? "..." : "Excel"}
+            </button>
+
+            <button
+              onClick={handleDeleteExpense}
+              disabled={isDeleteDisabled}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition ${
+                isDeleteDisabled
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-red-600 hover:bg-red-700"
+              }`}
+            >
+              <Trash2 size={16} />
+              Delete
+            </button>
           </div>
         </div>
+
+        {/* Normal Expenses Table */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h2 className="font-bold text-xl mb-3 text-[#1f3b64]">Normal Expenses</h2>
+          <LogTable
+            expenses={expenses}
+            onSaveTA={doSaveTA}
+            onSaveDA={doSaveDA}
+            onEditTADesc={doSaveTADesc}
+            onEditDADesc={doSaveDADesc}
+            onEditLocationDesc={() => {}}
+            selectedRowId={selectedExpenseId}
+            onSelectRow={handleSelectExpense}
+          />
+          <p className="mt-3 font-semibold text-right text-lg">
+            Subtotal 1: <span className="font-bold text-blue-600">₹ {subtotal1.toLocaleString("en-IN")}</span>
+          </p>
+        </div>
+
+        {/* Other Expenses Table */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h2 className="font-bold text-xl mb-3 text-[#1f3b64]">Other Expenses</h2>
+          <OtherExpensesTable
+            otherExpenses={otherExpenses}
+            onSaveExtraAmount={doSaveOtherExpenseExtraAmount}
+            onSaveExtraDescription={doSaveOtherExpenseExtraDescription}
+            selectedRowId={selectedOtherExpenseId}
+            onSelectRow={handleSelectOtherExpense}
+          />
+          <p className="mt-3 font-semibold text-right text-lg">
+            Subtotal 2: <span className="font-bold text-blue-600">₹ {subtotal2.toLocaleString("en-IN")}</span>
+          </p>
+        </div>
       </div>
-    </Layout>
-  );
+
+{/* --- Grand Total & Approve Section (Below Other Expenses Table) --- */}
+<div className="mt-6 flex flex-col items-center justify-center">
+  <p className="text-lg font-semibold text-[#1f3b64] mb-3">
+    Grand Total:{" "}
+    <span className="text-green-600 text-xl font-bold">
+      ₹ {grandTotal.toLocaleString("en-IN")}
+    </span>
+  </p>
+  <button
+    onClick={handleApproveExpense}
+    className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition"
+  >
+    ✅ Approve Expense
+  </button>
+</div>
+
+      
+      </div>
+    
+  </Layout>
+);
+
 };
 
 export default AdminExpenseStatement;

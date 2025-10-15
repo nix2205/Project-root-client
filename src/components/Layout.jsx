@@ -25,7 +25,7 @@ const Layout = ({ title, children, backTo }) => {
           </div>
 
           {/* Title */}
-          <h1 className="text-2xl font-bold tracking-wide text-center flex-1">
+          <h1 className="text-3xl font-bold tracking-wide text-center flex-1">
             {title}
           </h1>
 

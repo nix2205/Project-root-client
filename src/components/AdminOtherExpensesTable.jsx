@@ -55,8 +55,8 @@ const OtherExpensesTable = ({
           <tr>
             <th className="border p-3 w-12 text-center">Sl.No</th>
             <th className="border p-3 w-32 text-center">Date</th>
-            <th className="border p-3 w-auto text-left">Description</th>
             <th className="border p-3 w-28 text-center">Bill No</th>   {/* ✅ NEW */}
+            <th className="border p-3 w-auto text-left">Description</th>
             <th className="border p-3 w-56 text-center">Amount</th>
             <th className="border p-3 w-20 text-center hide-on-pdf">Select</th>
           </tr>
@@ -67,8 +67,8 @@ const OtherExpensesTable = ({
               <tr key={entry._id} className="hover:bg-gray-50">
                 <td className="border p-2 text-center">{serialNumber++}</td>
                 {index === 0 && <td rowSpan={entries.length} className="border p-2 text-center font-semibold align-middle">{date}</td>}
+                <td className="border p-2 text-center">{entry.billNo || "-"}</td> {/* ✅ NEW */}                
                 <td className="border p-2 whitespace-normal break-words">{entry.description}</td>
-                                        <td className="border p-2 text-center">{entry.billNo || "-"}</td> {/* ✅ NEW */}
 
                 <td className="border p-2 text-right">{renderAmountCell(entry)}</td>
                 <td className="border p-2 text-center hide-on-pdf">
