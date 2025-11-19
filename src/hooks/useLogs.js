@@ -17,131 +17,275 @@ export const useLogs = (userInfo) => {
   const [isMultiRecording, setIsMultiRecording] = useState(false);
 
   // ====================== Updated cleanCityName with CityZone fallback ======================
-  const cleanCityName = async (rawCity, coords) => {
-    console.log("cleanCityName called with:", { rawCity, coords });
+const cleanCityName = async (rawCity, coords) => {
+  console.log("cleanCityName called with:", { rawCity, coords });
 
-    if (!rawCity || !userInfo) {
-      console.log("No rawCity or userInfo available, returning 'Unknown'");
-      return "Unknown";
-    }
+  const allCities = [userInfo?.hq, ...(userInfo?.ex || []), ...(userInfo?.os || [])].filter(Boolean);
 
-    const normalized = rawCity.toLowerCase();
-    const allCities = [userInfo.hq, ...(userInfo.ex || []), ...(userInfo.os || [])];
-    console.log("All user cities:", allCities);
-
-    // 1️⃣ Direct match
+  // If backend CityZone already returned a city, prefer that (rawCity here)
+  if (rawCity) {
+    const normalized = rawCity.toLowerCase().trim();
     const directMatch = allCities.find((city) => normalized.includes(city.toLowerCase().trim()));
     if (directMatch) {
       console.log("Direct match found:", directMatch);
-      return directMatch;
+      return { city: directMatch, matchedBy: "direct" };
     }
 
-    // 2️⃣ CityZone range check fallback
-    if (coords) {
-      try {
-        console.log("Calling CityZone API with coords:", coords);
-        const res = await axios.post(`${API}/api/city-zones/resolve`, {
-          lat: coords.lat,
-          lon: coords.lon,
-        });
-        const data = res.data; // { city, matchedBy }
-        console.log("CityZone range check response:", data);
+    // If no direct match, but rawCity exists, return rawCity (might be a human-readable name)
+    console.log("No direct match for rawCity, returning rawCity:", rawCity);
+    return { city: rawCity, matchedBy: "raw" };
+  }
 
-        if (data.city && allCities.some((c) => c.toLowerCase() === data.city.toLowerCase())) {
-          console.log("City matched by CityZone:", data.city);
-          return data.city;
-        } else {
-          console.log("CityZone returned a city but it does not match user cities");
-        }
-      } catch (err) {
-        console.warn("CityZone range check failed in cleanCityName:", err);
+  // If no rawCity, try backend CityZone again via coords (redundant but safe)
+  if (coords) {
+    try {
+      const res = await axios.post(`${API}/api/city-zones/resolve`, { lat: coords.lat, lon: coords.lon });
+      const data = res.data;
+      console.log("CityZone range check response:", data);
+      if (data.city && allCities.some((c) => c.toLowerCase() === data.city.toLowerCase())) {
+        console.log("City matched by CityZone:", data.city);
+        return { city: data.city, matchedBy: "cityzone" };
+      } else if (data.city && data.city !== "Unknown") {
+        // returned a city but it's not in user config
+        console.log("CityZone returned a city not in user config:", data.city);
+        return { city: data.city, matchedBy: "cityzone-unmatched" };
       }
+    } catch (err) {
+      console.warn("CityZone range check failed in cleanCityName:", err);
     }
+  }
 
-    // 3️⃣ If all fails, return rawCity
-    console.log("No match found, returning rawCity:", rawCity);
-    return rawCity || "Unknown";
-  };
+  console.log("No match found, returning Unknown");
+  return { city: "Unknown", matchedBy: "none" };
+};
+
 
   // ------------------ RECORD SINGLE PLACE ------------------
-  const handleRecord = useCallback(async () => {
-    setIsRecording(true);
-    try {
-      const now = new Date();
-      const coords = await getUserLocation();
-      console.log("User coordinates:", coords);
+//   const handleRecord = useCallback(async () => {
+//     setIsRecording(true);
+//     try {
+//       const now = new Date();
+//       const coords = await getUserLocation();
+//       console.log("User coordinates:", coords);
 
-      const { city: rawCity } = await getCityFromCoords(coords);
-      console.log("Raw city from coords:", rawCity);
+//       const { city: rawCity, matchedBy } = await getCityFromCoords(coords);
+// console.log("CityZone matchedBy:", matchedBy);
 
-      const city = await cleanCityName(rawCity, coords);
-      console.log("Cleaned city name:", city);
+//       console.log("Raw city from coords:", rawCity);
 
-      const zone = getZone(city, userInfo);
-      console.log("Zone determined:", zone);
+//       const city = await cleanCityName(rawCity, coords);
+//       console.log("Cleaned city name:", city);
 
-      const da = userInfo.da?.[city] || 0;
-      const kms = userInfo.kms?.[city] ?? 0;
+//       const zone = getZone(city, userInfo);
+//       console.log("Zone determined:", zone);
 
-      const newLog = {
-        date: now.toLocaleDateString("en-GB"),
-        time: now.toLocaleTimeString(),
-        location: city,
-        zone,
-        km: kms,
-        transport: city !== userInfo.hq ? "" : "-",
-        fare: 0,
-        da,
-        total: getTotal(0, da, 0),
-        isSaved: false,
-      };
+//       const da = userInfo.da?.[city] || 0;
+//       const kms = userInfo.kms?.[city] ?? 0;
 
-      console.log("New log created:", newLog);
+//       const newLog = {
+//         date: now.toLocaleDateString("en-GB"),
+//         time: now.toLocaleTimeString(),
+//         location: city,
+//         zone,
+//         km: kms,
+//         transport: city !== userInfo.hq ? "" : "-",
+//         fare: 0,
+//         da,
+//         total: getTotal(0, da, 0),
+//         isSaved: false,
+//       };
 
-      setLogs([newLog]);
-      setTransport(newLog.transport);
-      // return newLog in case caller needs it
-      return newLog;
-    } catch (err) {
-      console.error("Location fetch failed:", err);
-      alert("Failed to fetch location. Please enable GPS.");
-      throw err; // rethrow so calling components can react if needed
-    } finally {
-      setIsRecording(false);
+//       console.log("New log created:", newLog);
+
+//       setLogs([newLog]);
+//       setTransport(newLog.transport);
+//       // return newLog in case caller needs it
+//       return newLog;
+//     } catch (err) {
+//       console.error("Location fetch failed:", err);
+//       alert("Failed to fetch location. Please enable GPS.");
+//       throw err; // rethrow so calling components can react if needed
+//     } finally {
+//       setIsRecording(false);
+//     }
+//   }, [userInfo]);
+
+
+const handleRecord = useCallback(async () => {
+  setIsRecording(true);
+  try {
+    const now = new Date();
+
+    // 1) get coords (GPS or IP fallback)
+    const coords = await getUserLocation();
+    console.log("User coordinates:", coords);
+
+    // 2) ask backend city-zone resolver (we expect { city, matchedBy } or { city: null })
+    const { city: rawCity, matchedBy: zoneMatchedBy } = await getCityFromCoords(coords);
+    console.log("CityZone result:", { rawCity, zoneMatchedBy });
+
+    // 3) normalize / clean the city name.
+    // cleanCityName may return either:
+    // - a string (legacy) OR
+    // - an object like { city: 'Vijayawada', matchedBy: 'direct' }
+    const cleaned = await cleanCityName(rawCity, coords);
+    const city =
+      typeof cleaned === "string"
+        ? cleaned
+        : cleaned?.city ?? (rawCity ?? "Unknown");
+    const cleanMatchedBy =
+      typeof cleaned === "string" ? null : cleaned?.matchedBy ?? null;
+
+    console.log("Clean result:", { city, cleanMatchedBy });
+
+    // 4) derive zone / allowances / kms
+    const zone = getZone(city, userInfo);
+    console.log("Zone determined:", zone);
+
+    const da = userInfo?.da?.[city] ?? 0;
+    const kms = userInfo?.kms?.[city] ?? 0;
+
+    // 5) If city isn't matched to user's list, notify user (UX)
+    //    -> keep the log but force the user to verify (transport empty blocks saving)
+    if (!city || city === "Unknown") {
+      // optional: you can show a modal instead of alert for better UX
+      alert(
+        "We couldn't map your exact city to your configured HQ/EX/OS. Please confirm the place or choose from your city list before saving."
+      );
     }
-  }, [userInfo]);
+
+    const newLog = {
+      date: now.toLocaleDateString("en-GB"),
+      time: now.toLocaleTimeString(),
+      location: city,
+      zone,
+      km: kms,
+      // if user is at HQ, set '-' as before; otherwise force empty string so they must confirm MOT
+      transport: city === userInfo?.hq ? "-" : "",
+      fare: 0,
+      da,
+      total: getTotal(0, da, 0),
+      isSaved: false,
+      // helpful debug flags (optional - remove if you don't want them saved in state)
+      _meta: {
+        coords,
+        zoneMatchedBy,
+        cleanMatchedBy,
+      },
+    };
+
+    console.log("New log created:", newLog);
+
+    setLogs([newLog]);
+    setTransport(newLog.transport);
+    return newLog;
+  } catch (err) {
+    console.error("Location fetch failed:", err);
+    alert("Failed to fetch location. Please enable GPS or check your network.");
+    throw err; // rethrow so calling components can react if needed
+  } finally {
+    setIsRecording(false);
+  }
+}, [userInfo]);
+
 
   // ------------------ RECORD MULTI-PLACE ------------------
+  // const handleMultiplePlacesRecord = useCallback(async () => {
+  //   setIsMultiRecording(true);
+  //   try {
+  //     const now = new Date();
+  //     const coords = await getUserLocation();
+  //     const { city: rawCity, matchedBy } = await getCityFromCoords(coords);
+  //     console.log("CityZone matchedBy:", matchedBy);
+
+
+  //     const city = await cleanCityName(rawCity, coords);
+  //     const zone = getZone(city, userInfo);
+  //     const kms = userInfo.kms?.[city] ?? 0;
+
+  //     setMultiPlaceData({
+  //       date: now.toLocaleDateString("en-GB"),
+  //       time: now.toLocaleTimeString(),
+  //       location: city,
+  //       zone,
+  //       km: kms,
+  //       transport: "",
+  //       fare: "",
+  //       da: "",
+  //       description: "",
+  //     });
+  //   } catch (err) {
+  //     console.error("Multi-place location fetch failed:", err);
+  //     alert("Failed to fetch location. Please enable GPS.");
+  //     throw err;
+  //   } finally {
+  //     setIsMultiRecording(false);
+  //   }
+  // }, [userInfo]);
+
   const handleMultiplePlacesRecord = useCallback(async () => {
-    setIsMultiRecording(true);
-    try {
-      const now = new Date();
-      const coords = await getUserLocation();
-      const { city: rawCity } = await getCityFromCoords(coords);
+  setIsMultiRecording(true);
+  try {
+    const now = new Date();
 
-      const city = await cleanCityName(rawCity, coords);
-      const zone = getZone(city, userInfo);
-      const kms = userInfo.kms?.[city] ?? 0;
+    // 1) get coords (GPS or IP fallback)
+    const coords = await getUserLocation();
+    console.log("Multi-place - User coordinates:", coords);
 
-      setMultiPlaceData({
-        date: now.toLocaleDateString("en-GB"),
-        time: now.toLocaleTimeString(),
-        location: city,
-        zone,
-        km: kms,
-        transport: "",
-        fare: "",
-        da: "",
-        description: "",
-      });
-    } catch (err) {
-      console.error("Multi-place location fetch failed:", err);
-      alert("Failed to fetch location. Please enable GPS.");
-      throw err;
-    } finally {
-      setIsMultiRecording(false);
+    // 2) resolve via backend CityZone
+    const { city: rawCity, matchedBy: zoneMatchedBy } = await getCityFromCoords(coords);
+    console.log("Multi-place - CityZone result:", { rawCity, zoneMatchedBy });
+
+    // 3) normalize / clean city name (supports both string and object returns)
+    const cleaned = await cleanCityName(rawCity, coords);
+    const city =
+      typeof cleaned === "string"
+        ? cleaned
+        : cleaned?.city ?? (rawCity ?? "Unknown");
+    const cleanMatchedBy = typeof cleaned === "string" ? null : cleaned?.matchedBy ?? null;
+
+    console.log("Multi-place - Clean result:", { city, cleanMatchedBy });
+
+    // 4) derive zone / kms / defaults
+    const zone = getZone(city, userInfo);
+    const kms = userInfo?.kms?.[city] ?? 0;
+    const daDefault = userInfo?.da?.[city] ?? "";
+
+    // 5) warn the user if we couldn't map to a known city
+    if (!city || city === "Unknown") {
+      // Consider replacing alert with a modal for better UX
+      alert(
+        "We couldn't map your location to a configured city. Please confirm the place or select from your HQ/EX/OS list before submitting."
+      );
     }
-  }, [userInfo]);
+
+    // 6) prepare multiPlaceData (transport left empty so user must fill)
+    setMultiPlaceData({
+      date: now.toLocaleDateString("en-GB"),
+      time: now.toLocaleTimeString(),
+      location: city,
+      zone,
+      km: kms,
+      transport: "",
+      fare: "",
+      da: daDefault,
+      description: "",
+      // debug/meta info — optional, remove if you don't want this persisted in state
+      _meta: {
+        coords,
+        zoneMatchedBy,
+        cleanMatchedBy,
+      },
+    });
+  } catch (err) {
+    console.error("Multi-place location fetch failed:", err);
+    alert("Failed to fetch location. Please enable GPS or check your network.");
+    throw err;
+  } finally {
+    setIsMultiRecording(false);
+  }
+}, [userInfo]);
+
 
   const handleApplyTransport = () => {
     if (!userInfo || logs.length === 0) return;
@@ -270,7 +414,7 @@ export const useLogs = (userInfo) => {
       await axios.post(`${API}/api/user/add-expense`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      alert("Multi-place expense saved! Marked as special.");
+      alert("Multi-place expense saved!");
       setMultiPlaceData(null);
     } catch (err) {
       console.error("Error saving multi-place:", err);

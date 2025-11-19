@@ -222,7 +222,7 @@ export default function FaresTable({
             <option value="" disabled className="text-gray-400">
               MOT
             </option>
-            <option value="-">-</option>
+            <option value="-">local</option>
             <option value="bike">Bike</option>
             <option value="bus">Bus</option>
             <option value="train">Train</option>
