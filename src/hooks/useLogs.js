@@ -1,10 +1,9 @@
-
-
 // hooks/useLogs.js
 import { useState } from "react";
 import axios from "axios";
 import { getUserLocation, getCityFromCoords } from "../utils/getCityFromCoords";
 import { getZone, getTotal } from "../utils/helpers";
+import { useCallback } from "react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -12,6 +11,10 @@ export const useLogs = (userInfo) => {
   const [logs, setLogs] = useState([]);
   const [transport, setTransport] = useState("");
   const [multiPlaceData, setMultiPlaceData] = useState(null);
+
+  // Loading states exposed by the hook
+  const [isRecording, setIsRecording] = useState(false);
+  const [isMultiRecording, setIsMultiRecording] = useState(false);
 
   // ====================== Updated cleanCityName with CityZone fallback ======================
   const cleanCityName = async (rawCity, coords) => {
@@ -60,7 +63,9 @@ export const useLogs = (userInfo) => {
     return rawCity || "Unknown";
   };
 
-  const handleRecord = async () => {
+  // ------------------ RECORD SINGLE PLACE ------------------
+  const handleRecord = useCallback(async () => {
+    setIsRecording(true);
     try {
       const now = new Date();
       const coords = await getUserLocation();
@@ -95,13 +100,20 @@ export const useLogs = (userInfo) => {
 
       setLogs([newLog]);
       setTransport(newLog.transport);
+      // return newLog in case caller needs it
+      return newLog;
     } catch (err) {
       console.error("Location fetch failed:", err);
       alert("Failed to fetch location. Please enable GPS.");
+      throw err; // rethrow so calling components can react if needed
+    } finally {
+      setIsRecording(false);
     }
-  };
+  }, [userInfo]);
 
-  const handleMultiplePlacesRecord = async () => {
+  // ------------------ RECORD MULTI-PLACE ------------------
+  const handleMultiplePlacesRecord = useCallback(async () => {
+    setIsMultiRecording(true);
     try {
       const now = new Date();
       const coords = await getUserLocation();
@@ -125,8 +137,11 @@ export const useLogs = (userInfo) => {
     } catch (err) {
       console.error("Multi-place location fetch failed:", err);
       alert("Failed to fetch location. Please enable GPS.");
+      throw err;
+    } finally {
+      setIsMultiRecording(false);
     }
-  };
+  }, [userInfo]);
 
   const handleApplyTransport = () => {
     if (!userInfo || logs.length === 0) return;
@@ -164,74 +179,74 @@ export const useLogs = (userInfo) => {
     return `${hour}:${minute} ${ampm}`;
   };
 
-const handleSaveExpenses = async () => {
-  if (logs.length === 0 || logs[0].isSaved) {
-    alert("Nothing to save.");
-    return;
-  }
-
-  const log = logs[0];
-
-  // 🚨 New validation: must confirm MOT before saving
-  if (!log.transport || log.transport === "") {
-    alert("Please select a Mode of Transport (MOT) and click 'Confirm MOT' before saving.");
-    return;
-  }
-
-  if (log.location !== userInfo.hq && log.transport === "-") {
-    alert("Invalid MOT: please select and confirm a valid mode of transport before saving.");
-    return;
-  }
-
-  const formatDate = (dateStr) => {
-    if (dateStr.includes("/")) return dateStr;
-    if (dateStr.includes("-")) {
-      const [year, month, day] = dateStr.split("-");
-      return `${day}/${month}/${year}`;
-    }
-    const d = new Date();
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
-  const formattedDate = formatDate(log.date);
-
-  try {
-    const existing = await axios.get(`${API}/api/user/expenses`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
-
-    const alreadyExists = existing.data.some(
-      (e) => e.date === formattedDate && !e.isSpecial
-    );
-
-    if (alreadyExists) {
-      alert("A normal expense already exists for today. You cannot add another.");
+  const handleSaveExpenses = async () => {
+    if (logs.length === 0 || logs[0].isSaved) {
+      alert("Nothing to save.");
       return;
     }
 
-    const formattedLog = {
-      ...log,
-      date: formattedDate,
-      location: capitalizeWords(log.location),
-      transport: capitalizeWords(log.transport),
-      time: formatTimeAMPM(log.time),
+    const log = logs[0];
+
+    // 🚨 New validation: must confirm MOT before saving
+    if (!log.transport || log.transport === "") {
+      alert("Please select a Mode of Transport (MOT) and click 'Confirm MOT' before saving.");
+      return;
+    }
+
+    if (log.location !== userInfo.hq && log.transport === "-") {
+      alert("Invalid MOT: please select and confirm a valid mode of transport before saving.");
+      return;
+    }
+
+    const formatDate = (dateStr) => {
+      if (dateStr.includes("/")) return dateStr;
+      if (dateStr.includes("-")) {
+        const [year, month, day] = dateStr.split("-");
+        return `${day}/${month}/${year}`;
+      }
+      const d = new Date();
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
     };
 
-    const token = localStorage.getItem("token");
-    await axios.post(`${API}/api/user/add-expense`, formattedLog, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const formattedDate = formatDate(log.date);
 
-    alert("Expense saved!");
-    setLogs([{ ...formattedLog, isSaved: true }]);
-  } catch (err) {
-    console.error("Error saving field work:", err);
-    alert("Failed to save. Please try again.");
-  }
-};
+    try {
+      const existing = await axios.get(`${API}/api/user/expenses`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+
+      const alreadyExists = existing.data.some(
+        (e) => e.date === formattedDate && !e.isSpecial
+      );
+
+      if (alreadyExists) {
+        alert("A normal expense already exists for today. You cannot add another.");
+        return;
+      }
+
+      const formattedLog = {
+        ...log,
+        date: formattedDate,
+        location: capitalizeWords(log.location),
+        transport: capitalizeWords(log.transport),
+        time: formatTimeAMPM(log.time),
+      };
+
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/api/user/add-expense`, formattedLog, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      alert("Expense saved!");
+      setLogs([{ ...formattedLog, isSaved: true }]);
+    } catch (err) {
+      console.error("Error saving field work:", err);
+      alert("Failed to save. Please try again.");
+    }
+  };
 
   const handleSaveMultiPlace = async () => {
     if (!multiPlaceData) return alert("No multi-place data to save.");
@@ -274,5 +289,8 @@ const handleSaveExpenses = async () => {
     handleSaveMultiPlace,
     setTransport,
     setMultiPlaceData,
+    // new flags
+    isRecording,
+    isMultiRecording,
   };
 };

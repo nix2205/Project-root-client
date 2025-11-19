@@ -104,30 +104,90 @@ const AdminExpenseStatement = () => {
   };
 
   const handleDownloadPDF = async () => {
-    const content = pdfContentRef.current;
-    if (!content) return;
-    setIsDownloadingPDF(true);
-    content.classList.add("pdf-mode");
-    try {
-      const canvas = await html2canvas(content, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const canvasAspectRatio = canvas.width / canvas.height;
-      const pdfAspectRatio = pdfWidth / pdfHeight;
-      const finalWidth = canvasAspectRatio > pdfAspectRatio ? pdfWidth : pdfHeight * canvasAspectRatio;
-      const finalHeight = canvasAspectRatio > pdfAspectRatio ? pdfWidth / canvasAspectRatio : pdfHeight;
-      pdf.addImage(imgData, "PNG", (pdfWidth - finalWidth) / 2, 0, finalWidth, finalHeight);
-      pdf.save(`expense-statement-${username}-${dayjs().month(selectedMonth.month - 1).year(selectedMonth.year).format("MMMM_YYYY")}.pdf`);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF.");
-    } finally {
-      content.classList.remove("pdf-mode");
-      setIsDownloadingPDF(false);
+  const content = pdfContentRef.current;
+  if (!content) return;
+  setIsDownloadingPDF(true);
+  content.classList.add("pdf-mode");
+
+  try {
+    // 1) Render content to canvas at scale=1 (smaller but ok quality)
+    const canvas = await html2canvas(content, {
+      scale: 1.4,
+      useCORS: true,
+      logging: false,
+      windowWidth: document.documentElement.scrollWidth,
+      windowHeight: document.documentElement.scrollHeight,
+    });
+
+    // 2) Prepare PDF sizes
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidthMM = pdf.internal.pageSize.getWidth();
+    const pdfHeightMM = pdf.internal.pageSize.getHeight();
+
+    // Convert px -> mm ratio (using 96 DPI assumption)
+    const pxPerMm = 96 / 25.4; // ~3.7795275591
+    const canvasWidthPx = canvas.width;
+    const canvasHeightPx = canvas.height;
+
+    // target width in px that maps to pdf width in mm
+    const targetPdfWidthPx = Math.floor(pdfWidthMM * pxPerMm);
+    // scale factor to fit canvas width to pdf width
+    const scaleFactor = targetPdfWidthPx / canvasWidthPx;
+
+    // compute page height in px after scaling
+    const pageHeightPx = Math.floor(pdfHeightMM * pxPerMm / scaleFactor);
+
+    // We'll slice the canvas vertically into pages of height pageHeightPx
+    const totalPages = Math.ceil(canvasHeightPx / pageHeightPx);
+
+    // 3) Create a temporary canvas to draw each slice (keeps memory use modest)
+    const tmpCanvas = document.createElement("canvas");
+    tmpCanvas.width = canvasWidthPx;
+    tmpCanvas.height = Math.min(pageHeightPx, canvasHeightPx);
+    const tmpCtx = tmpCanvas.getContext("2d");
+
+    // JPEG quality (0.5 - 0.8 is usually a good sweet spot)
+    const JPEG_QUALITY = 0.85;
+
+    for (let page = 0; page < totalPages; page++) {
+      const sx = 0;
+      const sy = page * pageHeightPx;
+      const sHeight = Math.min(pageHeightPx, canvasHeightPx - sy);
+
+      // resize tmp canvas height to current slice
+      tmpCanvas.height = sHeight;
+
+      // clear then draw slice from original canvas
+      tmpCtx.clearRect(0, 0, tmpCanvas.width, tmpCanvas.height);
+      tmpCtx.drawImage(canvas, sx, sy, canvasWidthPx, sHeight, 0, 0, canvasWidthPx, sHeight);
+
+      // convert slice to JPEG data URL (much smaller than PNG)
+      const imgData = tmpCanvas.toDataURL("image/jpeg", JPEG_QUALITY);
+
+      // compute display size in mm to keep aspect ratio and fit page width
+      const imgWidthMM = pdfWidthMM;
+      const imgHeightMM = (sHeight * scaleFactor) / pxPerMm; // px -> mm conversion
+
+      // center vertically if needed (we use 0 top)
+      const x = 0;
+      const y = 0;
+
+      // add to PDF
+      if (page > 0) pdf.addPage();
+      pdf.addImage(imgData, "JPEG", x, y, imgWidthMM, imgHeightMM);
     }
-  };
+
+    // 4) Save PDF (filename same as before)
+    pdf.save(`expense-statement-${username}-${dayjs().month(selectedMonth.month - 1).year(selectedMonth.year).format("MMMM_YYYY")}.pdf`);
+  } catch (error) {
+    console.error("Error generating compressed PDF:", error);
+    alert("Failed to generate PDF.");
+  } finally {
+    content.classList.remove("pdf-mode");
+    setIsDownloadingPDF(false);
+  }
+};
+
 
   const handleDownloadExcel = () => {
     setIsDownloadingExcel(true);
@@ -215,26 +275,29 @@ const AdminExpenseStatement = () => {
   };
   
   const handleApproveExpense = async () => {
-    if (!window.confirm(`Approve expenses for ${dayjs().month(selectedMonth.month - 1).year(selectedMonth.year).format("MMMM YYYY")}?`))
-      return;
+  if (!window.confirm(`Approve expenses for ${dayjs().month(selectedMonth.month - 1).year(selectedMonth.year).format("MMMM YYYY")}?`))
+    return;
 
-    try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-      const { month, year } = selectedMonth;
+  try {
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
+    const { month, year } = selectedMonth;
 
-      await axios.put(
-        `${API}/api/admin/approve-expense/${username}`,
-        { month, year, total: grandTotal },
-        { headers }
-      );
+    await axios.put(
+      `${API}/api/admin/approve-month/${username}`,
+      { month, year },
+      { headers }
+    );
 
-      alert("Expense approved successfully ✅");
-    } catch (error) {
-      console.error("Error approving expense:", error);
-      alert("Failed to approve expense.");
-    }
-  };
+    alert("Expense approved successfully ✅");
+    // optionally refresh data to show status
+    fetchData();
+  } catch (error) {
+    console.error("Error approving expense:", error);
+    alert("Failed to approve expense.");
+  }
+};
+
 
   const subtotal1 = expenses.reduce((sum, e) => sum + (e.total || 0), 0);
   const subtotal2 = otherExpenses.reduce((sum, e) => sum + (e.total || 0), 0);

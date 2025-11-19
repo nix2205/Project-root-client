@@ -1,5 +1,3 @@
-
-
 import React from "react";
 import { useUserInfo } from "../hooks/useUserInfo";
 import { useLogs } from "../hooks/useLogs";
@@ -21,6 +19,8 @@ const FieldWorkPage = () => {
     handleSaveMultiPlace,
     setTransport,
     setMultiPlaceData,
+    isRecording,        // <-- new from hook
+    isMultiRecording,   // <-- new from hook
   } = useLogs(userInfo);
 
   if (!userInfo)
@@ -65,6 +65,8 @@ const FieldWorkPage = () => {
             handleApplyTransport={handleApplyTransport}
             handleMultiplePlacesRecord={handleMultiplePlacesRecord}
             currentCity={logs[0]?.location || ""}
+            isRecording={isRecording}               // passed to buttons
+            isMultiRecording={isMultiRecording}     // passed to buttons
           />
         </div>
 

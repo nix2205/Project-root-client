@@ -13,6 +13,19 @@ const ExpenseStatement = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear] = useState(new Date().getFullYear());
 
+    const shortMonthNames = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+  // Whether this month is already submitted by the user (disables button)
+  const isMonthSubmitted = (() => {
+    if (!userInfo) return false;
+    const monthKey = shortMonthNames[selectedMonth - 1];
+    // tolerate stored variations: "NOV" or "NOV-2025" etc.
+    return (userInfo.months || []).some(
+      (m) => m.month === monthKey || (typeof m.month === "string" && m.month.startsWith(monthKey))
+    );
+  })();
+
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -51,6 +64,39 @@ const ExpenseStatement = () => {
   const showDateDesc = (date) => {};
   const showTADesc = (expenseId) => {};
   const showDADesc = (expenseId) => {};
+
+const handleSubmitForApproval = async () => {
+  if (isMonthSubmitted) {
+    alert("You can submit only once per month.");
+    return;
+  }
+
+  if (!window.confirm(`Submit expenses for ${currentMonthLabel} for approval?`)) return;
+  try {
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
+    const { month, year } = { month: selectedMonth, year: selectedYear };
+
+    // send month as number or short name — backend's formatMonthKey handles it
+    await axios.post(
+      `${API}/api/user/submit-month`,
+      { month, total: grandTotal },
+      { headers }
+    );
+
+    alert("Submitted for approval ✅");
+    // Optionally refetch userInfo/months to update UI (ideal)
+    const userRes = await axios.get(`${API}/api/user/info`, { headers });
+    setUserInfo(userRes.data);
+  } catch (err) {
+    console.error("Error submitting month:", err);
+    const msg =
+      err?.response?.data?.error ||
+      "Failed to submit month for approval.";
+    alert(msg);
+  }
+};
+
 
   const currentMonthLabel = new Date(
     selectedYear,
@@ -141,6 +187,19 @@ const ExpenseStatement = () => {
           <h2 className="text-2xl font-bold text-green-700 border-t pt-4">
             Grand Total: ₹{grandTotal.toLocaleString("en-IN")}
           </h2>
+  <div className="mt-4">
+    <button
+      onClick={handleSubmitForApproval}
+      disabled={isMonthSubmitted}
+      className={`px-6 py-3 rounded-lg font-semibold transition text-white ${
+        isMonthSubmitted ? "bg-gray-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"
+      }`}
+    >
+      {isMonthSubmitted ? "Already submitted" : "✅ Submit for Approval"}
+    </button>
+  </div>
+
+
         </div>
       </div>
     </Layout>
