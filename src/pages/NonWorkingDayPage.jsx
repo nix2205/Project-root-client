@@ -9,11 +9,27 @@ const NonWorkingDayPage = () => {
   const API = process.env.REACT_APP_BACKEND_URL;
 
   const today = new Date();
-  const minDate = new Date(today.getFullYear(), today.getMonth() - 1, 1); // start of prev month
-  const maxDate = new Date(today.getFullYear(), today.getMonth() + 1, 0); // end of current month
 
-  const formatForInput = (d) => d.toISOString().split("T")[0]; // yyyy-mm-dd
-    const [date, setDate] = useState(formatForInput(today));
+  // start of previous month
+  const minDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  // end of current month
+  const maxDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+  // format a Date object as yyyy-mm-dd in LOCAL time (no toISOString)
+  const formatForInput = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // parse yyyy-mm-dd as a LOCAL date
+  const parseLocalDate = (value) => {
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  };
+
+  const [date, setDate] = useState(formatForInput(today));
 
   const handleSave = async () => {
     if (!reason || (reason === "Others" && !customReason.trim())) {
@@ -26,8 +42,9 @@ const NonWorkingDayPage = () => {
       return;
     }
 
-    // Validate entered date
-    const enteredDate = new Date(date);
+    // Validate entered date (local)
+    const enteredDate = parseLocalDate(date);
+
     if (enteredDate < minDate || enteredDate > maxDate) {
       alert("Date must be within current or previous month.");
       return;
@@ -35,8 +52,8 @@ const NonWorkingDayPage = () => {
 
     const selectedReason = reason === "Others" ? customReason : reason;
 
-    // Format date & time
-    const formattedDate = enteredDate.toLocaleDateString("en-GB");
+    // Format date & time for saving
+    const formattedDate = enteredDate.toLocaleDateString("en-GB"); // dd/mm/yyyy
     const time = new Date().toLocaleTimeString("en-GB");
 
     const expenseEntry = {
@@ -124,8 +141,6 @@ const NonWorkingDayPage = () => {
               />
             </div>
           )}
-
-          
 
           {/* Submit Button */}
           <div className="flex flex-col items-center gap-2">
