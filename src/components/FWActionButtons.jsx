@@ -43,7 +43,7 @@ const ActionButtons = ({
             disabled={isRecording || isMultiRecording}
           >
             <option value="">Select MOT</option>
-            <option value="-">-</option>
+            <option value="local">local</option>
             <option value="bike">Bike</option>
             <option value="bus">Bus</option>
             <option value="train">Train</option>
@@ -65,7 +65,7 @@ const ActionButtons = ({
       )}
 
       {/* Multi-Place Button */}
-      <button
+      {/* <button
         onClick={handleMultiplePlacesRecord}
         disabled={isMultiRecording || isRecording}
         className={`flex items-center justify-center gap-2 ${
@@ -80,7 +80,7 @@ const ActionButtons = ({
         ) : (
           "➕ Record Multiple Places"
         )}
-      </button>
+      </button> */}
     </div>
   );
 };
